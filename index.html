@@ -629,6 +629,109 @@
   .step strong { display: block; font-size: 13px; }
   .step span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
 
+  /* ──────────────────────────────────────────────────────────
+     Reasoning / decisions — accordion under each problem
+  ─────────────────────────────────────────────────────────── */
+  .reasoning {
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line-strong);
+    display: grid;
+    gap: 8px;
+  }
+  .reasoning > h4 {
+    margin: 0 0 4px;
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: .08em;
+    font-weight: 800;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .reasoning > h4::before {
+    content: "";
+    width: 14px; height: 1px;
+    background: var(--accent);
+  }
+  .decision {
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-strong) 55%, transparent);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color .18s ease, background .18s ease;
+  }
+  .decision[open] {
+    border-color: color-mix(in srgb, var(--accent) 38%, var(--line-strong));
+    background: color-mix(in srgb, var(--accent) 5%, var(--surface-strong));
+  }
+  .decision summary {
+    padding: 11px 14px;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+  }
+  .decision summary::-webkit-details-marker { display: none; }
+  .decision summary:hover { background: color-mix(in srgb, var(--surface-strong) 75%, transparent); }
+  .decision summary strong {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+  .decision summary strong .num {
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    border-radius: 6px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent-2) 14%, transparent));
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+    color: var(--accent);
+    font: 800 11px "JetBrains Mono", ui-monospace, monospace;
+    flex-shrink: 0;
+  }
+  .decision summary .chev {
+    color: var(--muted);
+    transition: transform .2s ease, color .2s ease;
+    width: 18px; height: 18px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .decision[open] summary .chev { transform: rotate(180deg); color: var(--accent); }
+  .decision-body {
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: 10px;
+  }
+  .decision-body p {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .decision-body b { color: var(--ink); font-weight: 700; }
+  .decision-body .why b { color: var(--accent-2); }
+  .decision-body .alt b { color: var(--accent-3); }
+  .decision-body .how b { color: var(--accent); }
+  .decision-body ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .decision-body ul li { margin-bottom: 4px; }
+  .decision-body ul li b { color: var(--ink); }
+
   .artifact-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .artifact-button {
     padding: 7px 10px;
@@ -935,6 +1038,50 @@
                 <li><span class="tick">✓</span><span>Failed files copy to quarantine with tags and metadata, then alert SNS.</span></li>
                 <li><span class="tick">✓</span><span>Passed files go to Glue anonymization with GPS precision = 3.</span></li>
               </ul>
+              <div class="reasoning">
+                <h4>Decisions &amp; rationale</h4>
+                <details class="decision" open>
+                  <summary><strong><span class="num">01</span>Step Functions, not EventBridge Pipes / a Lambda chain / Glue Workflow</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> Step Functions gives native branching (<code>Choice</code>), built-in <code>Retry</code>/<code>Catch</code> with backoff and jitter, direct SDK integrations for S3/SNS/Glue (no Lambda hop), and a visual execution graph that operators can inspect during failures. It's the right tool the instant the workflow needs more than one decision.</p>
+                    <p class="alt"><b>Rejected alternatives:</b></p>
+                    <ul>
+                      <li><b>EventBridge Pipes</b> — no branching logic; can't route the same input to either quarantine or Glue.</li>
+                      <li><b>Lambda chain</b> — every transition needs custom retry/error handling; no visual debugging; extra cold starts.</li>
+                      <li><b>Glue Workflow</b> — Glue-centric; quarantine + SNS routing doesn't fit cleanly.</li>
+                      <li><b>MWAA / Airflow</b> — infrastructure overhead, no real payoff for a four-step event-driven flow.</li>
+                    </ul>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">02</span>Direct SDK integrations (no Lambda wrappers around S3, SNS, Glue)</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> <code>aws-sdk:s3:copyObject</code>, <code>sns:publish</code>, and <code>glue:startJobRun.sync</code> let Step Functions call AWS APIs directly. Zero Lambda cold start per call, no Lambda IAM proliferation, smaller error surface, and <code>.sync</code> makes the state machine block on Glue completion natively — removing the polling Lambda entirely.</p>
+                    <p class="alt"><b>Rejected:</b> Wrapping each call in a Lambda. It's the obvious junior approach, and each wrapper costs roughly 50–200 ms cold start, plus a Lambda ARN to maintain and audit.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">03</span>URL-encode <code>CopySource</code> inside the Lambda, not in the ASL</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> The validation Lambda runs <code>urllib.parse.quote(key, safe='/')</code> and returns <code>copySource</code> as a typed field. The state machine then consumes <code>$.validation.copySource</code> directly. Keys containing spaces, <code>+</code>, <code>#</code>, or non-ASCII characters now succeed S3 <code>CopyObject</code>.</p>
+                    <p class="how"><b>How we got here:</b> The parallel-agent review caught this. The original ASL used <code>States.Format('{}/{}', $.bucket, $.key)</code> which produces an unencoded <code>CopySource</code> and fails at runtime for any non-trivial agency key. Moving the encoding into the Lambda makes it unit-testable too.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">04</span>Strict 32-char hex validation on the manifest md5</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> A manifest containing <code>"md5": ""</code> or <code>"md5": "TBD"</code> would otherwise let us hash a multi-GB file and compare against garbage. We fail fast at manifest parse time and route to quarantine with <code>failureReason: "manifest_md5_not_hex"</code>.</p>
+                    <p class="alt"><b>Rejected:</b> Accept any string and let the natural comparison fail. Wastes bandwidth and disk I/O on a file whose manifest is already broken, and obscures the root cause in the alert.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">05</span>Full jitter on every retry + per-task <code>TimeoutSeconds</code></strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> Pure exponential backoff is correct for one execution but synchronises retries when many executions hit a throttled upstream simultaneously. <code>JitterStrategy: "FULL"</code> spreads retries across the backoff window. Top-level <code>TimeoutSeconds: 7200</code> + Glue-task <code>TimeoutSeconds: 5400</code> bound the whole execution so a stuck Glue job doesn't sit forever.</p>
+                    <p class="how"><b>How we got here:</b> The first draft used plain backoff. The agent-execution integration pass surfaced both issues and they were folded into every <code>Retry</code> block.</p>
+                  </div>
+                </details>
+              </div>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/01-ingestion-state-machine.asl.json">View ASL JSON</button>
                 <button class="artifact-button" data-file="deliverables/01-validate-checksum.py">View checksum Lambda</button>
@@ -956,6 +1103,49 @@
                 <li><span class="tick">✓</span><span>Break-glass requires recent MFA and is auditable.</span></li>
                 <li><span class="tick">✓</span><span>SCP enforcement, root recovery, and kill-chain controls documented.</span></li>
               </ul>
+              <div class="reasoning">
+                <h4>Decisions &amp; rationale</h4>
+                <details class="decision" open>
+                  <summary><strong><span class="num">01</span>Explicit <code>Deny</code> in the resource-based key policy, not IAM-side</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> IAM evaluation rule — explicit <code>Deny</code> anywhere beats any <code>Allow</code>. <code>AdministratorAccess</code> grants <code>kms:*</code> on Resource <code>*</code>, but a <code>Deny</code> in the <em>key policy</em> applies to the resource itself and overrides the IAM Allow. This is the only way to keep <code>AdministratorAccess</code> intact for other resources while denying decrypt on this single key.</p>
+                    <p class="alt"><b>Rejected:</b> Removing <code>kms:*</code> from <code>AdministratorAccess</code> — requires maintaining a custom Admin role and breaks routine operations. SCPs alone — work at the Org level but can't enforce per-key conditions like <code>kms:ViaService</code> or <code>kms:EncryptionContext</code>.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">02</span><code>ArnNotLike</code> with BOTH the IAM and STS assumed-role ARN forms</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> At runtime, an assumed role's principal ARN is <code>arn:aws:sts::ACCOUNT:assumed-role/RoleName/SESSION</code>, not <code>arn:aws:iam::ACCOUNT:role/RoleName</code>. <code>ArnNotEquals</code> against the IAM form alone would mean the legitimate Glue role gets denied at runtime — the explicit <code>Deny</code> evaluates true for Glue itself.</p>
+                    <p class="how"><b>How we got here:</b> This was the highest-impact bug the parallel-agent review caught. Fix: <code>ArnNotLike</code> matching <code>arn:aws:iam::123…:role/X</code> AND <code>arn:aws:sts::123…:assumed-role/X/*</code> for both the Glue and BreakGlass roles. Verified by re-reading the IAM principal-ARN docs and tracing what <code>sts:AssumeRole</code> actually returns.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">03</span>Organizations SCP — the real admin-override defense</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> The key policy alone isn't enough — an admin with <code>kms:PutKeyPolicy</code> could rewrite the policy and remove the <code>Deny</code>. Org SCPs evaluate at the Organizations level; <em>an admin inside the workload account cannot override them</em>. Only a principal in the Org <strong>management</strong> account can change SCPs, and that account has separate credentials, MFA, and audit trail. That's what makes the protection real.</p>
+                    <p class="alt"><b>Rejected:</b></p>
+                    <ul>
+                      <li><b>Just the key policy</b> — the obvious answer, but it can be rewritten by anyone with <code>kms:PutKeyPolicy</code>.</li>
+                      <li><b>Permission boundaries on Admin</b> — brittle, easy to mis-scope, can be lifted by the admin themselves.</li>
+                      <li><b>CloudTrail alerts only</b> — detective; fires after the breach has already happened.</li>
+                    </ul>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">04</span>Preserve root <code>kms:*</code> for documented recoverability</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> A KMS key with no admin path is permanently unrecoverable. AWS's standard pattern keeps <code>kms:*</code> for the root principal as a recovery anchor. Under normal operation root is blocked by the Org SCP (<code>DenyRootPrincipalExceptRecoveryAndBilling</code>); recovery requires lifting the SCP from the management account — which is itself audited end to end.</p>
+                    <p class="how"><b>How we got here:</b> The initial draft restricted root to read-only actions. The review pass flagged the lockout risk — if <code>KmsKeyAdmin</code> were accidentally deleted or its trust policy broke, the key would be lost. Restored the standard pattern and pushed root containment to the SCP layer.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">05</span><code>kms:ViaService</code> + <code>kms:EncryptionContext:project</code> conditions on the Glue allow</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> <code>kms:ViaService</code> binds the Allow to a specific AWS service path — a stolen Glue role credential cannot be replayed by a human via the CLI because the request principal won't carry the via-service indicator. <code>kms:EncryptionContext:project = incident-data-lake</code> further binds the decrypt to <em>this</em> data lake; even if Glue ran on another project's data, this key won't decrypt it.</p>
+                    <p class="alt"><b>Rejected:</b> Allow the Glue role unconditionally — far too easy to misuse a stolen credential. <code>ViaService</code> includes <code>s3.us-east-1.amazonaws.com</code> as well, because SSE-KMS reads on the Glue path go through S3.</p>
+                  </div>
+                </details>
+              </div>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/02-kms-key-policy.json">View KMS policy</button>
                 <button class="artifact-button" data-file="deliverables/02-scp-kms-guardrail.json">View SCP guardrail</button>
@@ -978,6 +1168,43 @@
                 <li><span class="tick">✓</span><span>Weighted sum/count math avoids biased avg(avg).</span></li>
                 <li><span class="tick">✓</span><span>The note explicitly rejects bigger workers and memory-only fixes.</span></li>
               </ul>
+              <div class="reasoning">
+                <h4>Decisions &amp; rationale</h4>
+                <details class="decision" open>
+                  <summary><strong><span class="num">01</span>Two-stage salted aggregation — not bigger workers, not more partitions</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> The hot intersection produces 10 M rows that the default <code>HashPartitioner</code> sends to one partition. Salting the group key with a random suffix splits the load across 64 buckets at the cost of one extra shuffle of just 64 rows per hot key in the second stage. The salted stage parallelises N-way; the strip-salt stage is tiny.</p>
+                    <p class="alt"><b>Rejected:</b></p>
+                    <ul>
+                      <li><b>Bigger Glue workers</b> — explicitly forbidden by the assignment, and doesn't fix the per-key bottleneck (the hot partition is per-key, not per-cluster).</li>
+                      <li><b><code>spark.sql.shuffle.partitions = 4000</code></b> — the hot key still maps to one partition; the rest just get smaller. Marginal effect.</li>
+                      <li><b>Broadcast join</b> — only helps joins, not <code>groupBy</code>. Doesn't apply.</li>
+                      <li><b>Splitting input files</b> — the skew is in the data, not the layout. All 10 M rows end up in the same partition after the shuffle anyway.</li>
+                    </ul>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">02</span>Random-salt expression in the pre-write repartition (not <code>intersection_id</code>)</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> A tuple repartition like <code>repartition(400, region, date, hour, intersection_id)</code> looks correct — more keys = more hashes? — but the hash is computed on the <em>tuple</em>. All rows with the same tuple value still go to one partition, so the hot intersection is funneled right back. Replacing <code>intersection_id</code> with <code>(F.rand() * SALT_BUCKETS).cast("int")</code> breaks the hot key across many writer tasks.</p>
+                    <p class="how"><b>How we got here:</b> This was the second bug the review caught after the avg-of-avgs math. Easy to miss because "more keys → less skew" is the intuitive (and wrong) mental model. The fix is one line in <code>03-glue-job-skeleton.py</code>.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">03</span><code>sum</code> + <code>count</code> math, not <code>avg</code> of <code>avg</code></strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> Under random salting, bucket sizes vary by chance. <code>avg(avg(x))</code> is <em>not</em> <code>avg(x)</code> when group sizes differ — the larger buckets get under-weighted. Emitting <code>sum(x)</code> and <code>count</code> from stage 1 and computing <code>Σsum / Σcount</code> in stage 2 reconstructs the true average exactly.</p>
+                    <p class="how"><b>How we got here:</b> The first draft computed <code>avg(lat), avg(lon)</code> per bucket. The review flagged the mathematical bias. Rewrote stage 1 to emit raw <code>sum(lat), sum(lon), count(*)</code> and divide in stage 2.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">04</span>Time-only output partitioning — never <code>intersection_id</code></strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> Partitioning Parquet output by <code>intersection_id</code> would recreate the skew at write time — one writer task per intersection, the hot one running forever. Partitioning by <code>(region, event_date, event_hour)</code> gives roughly <code>400 / (regions × hours)</code> writer tasks per output directory, spreading the hot intersection across multiple writers automatically.</p>
+                    <p class="alt"><b>Rejected:</b> Partition by <code>intersection_id</code> for query speed. Moves the failure from aggregation to write — same system, same hot key, different symptom. Spatial queries are kept fast via a Glue Catalog secondary index instead.</p>
+                  </div>
+                </details>
+              </div>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/03-data-skew-tech-note.md">View tech note</button>
                 <button class="artifact-button" data-file="deliverables/03-glue-job-skeleton.py">View Glue PySpark</button>
@@ -999,6 +1226,37 @@
                 <div class="step"><b>2</b><strong>setSecret</strong><span>No traffic moves. Old key still serves.</span></div>
                 <div class="step"><b>3</b><strong>testSecret</strong><span>Call Weather API with new key.</span></div>
                 <div class="step"><b>4</b><strong>finishSecret</strong><span>Promote only after test passes.</span></div>
+              </div>
+              <div class="reasoning">
+                <h4>Decisions &amp; rationale</h4>
+                <details class="decision" open>
+                  <summary><strong><span class="num">01</span><code>testSecret</code> runs <em>before</em> <code>finishSecret</code> moves <code>AWSCURRENT</code></strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> The assignment's explicit requirement. If <code>AWSCURRENT</code> were promoted first and only then tested, a broken new key would immediately take production traffic. Making <code>finishSecret</code> the <em>only</em> function that moves <code>AWSCURRENT</code> — and only after <code>testSecret</code> returns a 2xx from the live Weather API — means the old key keeps serving until we are sure the new one works.</p>
+                    <p class="how"><b>How we got here:</b> The invariant is smoke-tested in <code>screenshots/run-rotation-smoke-test.py</code>. Walking the four steps with mocked Secrets Manager + Weather API: <code>AWSCURRENT</code> stays on the OLD version through createSecret, setSecret, and testSecret, and only moves to NEW when finishSecret runs. A 401 from <code>testSecret</code> aborts cleanly and leaves <code>AWSCURRENT</code> on OLD.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">02</span>Separate admin-token secret (<code>WEATHER_ADMIN_TOKEN_ARN</code>)</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> This Lambda rotates the Weather API key. The admin bearer token used to <em>issue</em> new keys lives in a different Secrets Manager secret. If it lived in the same secret, rotation could deadlock — we'd need a working admin token to rotate the admin token. Keeping them separate breaks the cycle and lets each rotate on its own schedule.</p>
+                    <p class="alt"><b>Rejected:</b> Hard-code the admin token in the Lambda — obvious security failure. Rotate both keys inline — couples failure modes and risks lockout.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">03</span>Redact response bodies in error logs (not just success logs)</strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> The Weather admin API echoes the issued key back in error responses too — especially 4xx that include the key for debugging. Logging <code>resp.data</code> in any path would leak the new key to CloudWatch, defeating the whole rotation. The Lambda logs <code>resp.status</code> and <code>len(resp.data)</code> only.</p>
+                    <p class="how"><b>How we got here:</b> The first draft used <code>f"…body={resp.data!r}"</code> in the error message. The parallel-agent review pass flagged this as a critical security issue. All HTTP error logs now use a fixed format with the body redacted.</p>
+                  </div>
+                </details>
+                <details class="decision">
+                  <summary><strong><span class="num">04</span>Catch <code>InvalidRequestException</code> alongside <code>ResourceNotFoundException</code></strong><span class="chev">⌄</span></summary>
+                  <div class="decision-body">
+                    <p class="why"><b>Why:</b> Secrets Manager retries each step. On retry, the AWSPENDING version may exist with the staging label but without a value yet — a brief race between Secrets Manager's registration of the new version and our write. That state raises <code>InvalidRequestException</code>, not <code>ResourceNotFoundException</code>. Catching both and proceeding to write is the correct idempotent behaviour.</p>
+                    <p class="alt"><b>Rejected:</b> Catch only <code>ResourceNotFoundException</code> and let <code>InvalidRequestException</code> crash. Produces spurious failures and red CloudWatch alarms on perfectly normal retry paths. We also skip the staging-label check for <code>createSecret</code> specifically, matching the official AWS rotation template — the label write hasn't propagated yet at that step.</p>
+                  </div>
+                </details>
               </div>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/04-rotate-weather-api-key.py">View rotation Lambda</button>
