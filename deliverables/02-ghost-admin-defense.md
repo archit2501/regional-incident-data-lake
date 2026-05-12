@@ -6,7 +6,7 @@ The assignment asks for a KMS Key Policy that denies `kms:Decrypt` to a Lead AWS
 
 The key policy in `02-kms-key-policy.json` includes two critical statements:
 
-- **`DenyDecryptToEveryoneElse`** — denies `kms:Decrypt` to every principal whose ARN is not the Glue role or the Break-Glass role. Explicit `Deny` evaluates after Allow and overrides any IAM-side `kms:*` grant from `AdministratorAccess`.
+- **`DenyDecryptToEveryoneElse`** — denies `kms:Decrypt` to every principal whose ARN is not the Glue role or the Break-Glass role. Uses `ArnNotLike` with both the role ARN form (`arn:aws:iam::…:role/X`) and the assumed-role session ARN form (`arn:aws:sts::…:assumed-role/X/*`), because the *runtime* principal ARN of an assumed role is the STS form, not the IAM form — a common policy bug. Explicit `Deny` always wins in IAM evaluation and overrides any IAM-side `kms:*` grant from `AdministratorAccess`.
 - **`DenyKeyPolicyTampering`** — denies `kms:PutKeyPolicy`, `kms:ScheduleKeyDeletion`, `kms:DisableKey`, and grant-related actions to every principal except `KmsKeyAdmin`. **`DenyKeyPolicyTamperingWithoutMFA`** adds an MFA-recency gate on top, so even the `KmsKeyAdmin` role cannot edit the policy without a fresh MFA prompt.
 
 This stops the obvious paths: a normal admin cannot decrypt, and cannot rewrite the key policy from inside the account.
@@ -20,14 +20,16 @@ Layer 1 is enforced by the key policy *itself*. If an admin could somehow gain `
 - Because SCPs evaluate at the Organizations level, **an account admin cannot override them**. Only a principal in the Organizations management account — which is a separate account with separate credentials, separate MFA, and a separate audit trail — can change SCPs. This is what makes the protection real.
 - The same SCP also denies `cloudtrail:StopLogging`, `cloudtrail:DeleteTrail`, `cloudtrail:UpdateTrail`, and `cloudtrail:PutEventSelectors`. Without this, an attacker would simply blind the audit trail first and then tamper.
 
-## Layer 3 — Root account isolation
+## Layer 3 — Root account isolation (with controlled recovery path)
 
-AWS does not let any policy fully deny the account root, so we make root *unusable in practice*:
+AWS does not let any policy fully deny the account root, so we make root *unusable in practice* but preserve it as the documented recovery anchor:
 
 - Hardware MFA on the root user, credentials in a sealed envelope in a physical safe.
 - No programmatic access keys for root — it can only be used interactively.
-- The OU SCP includes `DenyRootPrincipalExceptBilling`, which denies all actions when the principal ARN is the workload account root, except a small allowlist for billing, IAM, and Identity Center setup. Root cannot call `kms:Decrypt` or `kms:PutKeyPolicy` because the SCP denies it, and the SCP itself can only be changed from the Organizations management account.
-- Root usage is alerted on via CloudTrail (any `userIdentity.type = Root` event triggers a page).
+- The key policy keeps the AWS-standard `EnableRootRecoveryAccess` statement granting `kms:*` to root. **This is intentional** — it preserves recoverability if the `KmsKeyAdmin` role is ever accidentally deleted or its trust policy breaks. Without this, the key would be permanently unrecoverable.
+- Under normal operation, root is blocked at the **Organizations SCP layer** (`DenyRootPrincipalExceptRecoveryAndBilling`) — root cannot call `kms:Decrypt`, can't assume Glue, can't access raw data. The SCP denies all but a small allowlist for billing, IAM password recovery, and key administration.
+- Recovery flow: a principal in the Organizations *management* account lifts the SCP block for the workload account; root is then used (with MFA) to fix the `KmsKeyAdmin` role; SCP is re-applied. The whole sequence is logged in CloudTrail across both accounts.
+- Root usage is alerted on via CloudTrail (any `userIdentity.type = Root` event triggers a page). Any SCP edit in the management account also pages.
 
 ## Layer 4 — Detective controls (the verifiable audit trail the assignment requires)
 

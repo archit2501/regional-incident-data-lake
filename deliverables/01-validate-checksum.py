@@ -30,6 +30,7 @@ import hashlib
 import json
 import logging
 from typing import Any
+from urllib.parse import quote
 
 import boto3
 
@@ -38,7 +39,8 @@ LOG.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
 
-CHUNK_SIZE = 8 * 1024 * 1024  # 8 MiB — keeps Lambda memory low even for multi-GB zips
+CHUNK_SIZE = 8 * 1024 * 1024              # 8 MiB — keeps Lambda memory low for multi-GB zips
+MAX_MANIFEST_BYTES = 1 * 1024 * 1024      # 1 MiB hard cap — manifest is JSON, not data
 
 
 def _stream_md5(bucket: str, key: str) -> tuple[str, int]:
@@ -54,8 +56,35 @@ def _stream_md5(bucket: str, key: str) -> tuple[str, int]:
 
 
 def _load_manifest(bucket: str, key: str) -> dict[str, Any]:
+    head = s3.head_object(Bucket=bucket, Key=key)
+    size = head["ContentLength"]
+    if size > MAX_MANIFEST_BYTES:
+        raise ValueError(
+            f"Manifest {bucket}/{key} is {size} bytes, exceeds {MAX_MANIFEST_BYTES} byte cap"
+        )
     obj = s3.get_object(Bucket=bucket, Key=key)
     return json.loads(obj["Body"].read())
+
+
+def _fail(bucket: str, key: str, manifest_key: str, reason: str) -> dict[str, Any]:
+    """Return a validation-failure result that routes to the quarantine path
+    via the state machine's ChecksumChoice, instead of raising and routing to
+    FailureNotification — a file that can't be validated is by policy suspect.
+    """
+    LOG.warning("validate-checksum: routing to quarantine — %s", reason)
+    return {
+        "bucket": bucket,
+        "key": key,
+        "manifestKey": manifest_key,
+        "checksumValid": False,
+        "computedMd5": "",
+        "expectedMd5": "",
+        "sizeBytes": 0,
+        "failureReason": reason,
+        # copySource is URL-encoded so the state machine's s3:copyObject call
+        # works for keys containing spaces, '+', '#', or non-ASCII characters.
+        "copySource": f"{bucket}/{quote(key, safe='/')}",
+    }
 
 
 def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
@@ -65,12 +94,22 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     key = event["key"]
     manifest_key = event["manifestKey"]
 
-    manifest = _load_manifest(bucket, manifest_key)
-    expected = manifest["md5"].lower()
+    try:
+        manifest = _load_manifest(bucket, manifest_key)
+    except Exception as exc:  # noqa: BLE001 — any manifest read failure is suspect
+        return _fail(bucket, key, manifest_key, f"manifest_read_error: {exc}")
 
-    computed, size = _stream_md5(bucket, key)
+    expected_raw = manifest.get("md5")
+    if not isinstance(expected_raw, str) or not expected_raw:
+        return _fail(bucket, key, manifest_key, "manifest_missing_md5_field")
+    expected = expected_raw.lower()
+
+    try:
+        computed, size = _stream_md5(bucket, key)
+    except Exception as exc:  # noqa: BLE001 — file unreadable → quarantine
+        return _fail(bucket, key, manifest_key, f"object_read_error: {exc}")
+
     valid = computed == expected
-
     result = {
         "bucket": bucket,
         "key": key,
@@ -79,6 +118,11 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
         "computedMd5": computed,
         "expectedMd5": expected,
         "sizeBytes": size,
+        "copySource": f"{bucket}/{quote(key, safe='/')}",
+        "failureReason": "" if valid else "checksum_mismatch",
     }
-    LOG.info("validate-checksum result=%s", json.dumps(result))
+    LOG.info(
+        "validate-checksum result=%s",
+        json.dumps({k: v for k, v in result.items() if k != "copySource"}),
+    )
     return result

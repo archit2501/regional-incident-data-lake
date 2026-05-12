@@ -3,18 +3,10 @@
   "Id": "incident-data-lake-key-policy",
   "Statement": [
     {
-      "Sid": "EnableLimitedRootAccess",
+      "Sid": "EnableRootRecoveryAccess",
       "Effect": "Allow",
       "Principal": { "AWS": "arn:aws:iam::123456789012:root" },
-      "Action": [
-        "kms:DescribeKey",
-        "kms:GetKeyPolicy",
-        "kms:GetKeyRotationStatus",
-        "kms:ListAliases",
-        "kms:ListGrants",
-        "kms:ListKeyPolicies",
-        "kms:ListResourceTags"
-      ],
+      "Action": "kms:*",
       "Resource": "*"
     },
     {
@@ -75,10 +67,12 @@
       "Action": "kms:Decrypt",
       "Resource": "*",
       "Condition": {
-        "ArnNotEquals": {
+        "ArnNotLike": {
           "aws:PrincipalArn": [
             "arn:aws:iam::123456789012:role/GlueIngestionRole",
-            "arn:aws:iam::123456789012:role/BreakGlassDataAccess"
+            "arn:aws:sts::123456789012:assumed-role/GlueIngestionRole/*",
+            "arn:aws:iam::123456789012:role/BreakGlassDataAccess",
+            "arn:aws:sts::123456789012:assumed-role/BreakGlassDataAccess/*"
           ]
         }
       }
@@ -99,8 +93,12 @@
       ],
       "Resource": "*",
       "Condition": {
-        "ArnNotEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::123456789012:role/KmsKeyAdmin"
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::123456789012:role/KmsKeyAdmin",
+            "arn:aws:sts::123456789012:assumed-role/KmsKeyAdmin/*",
+            "arn:aws:iam::123456789012:root"
+          ]
         }
       }
     },
@@ -115,7 +113,13 @@
       "Resource": "*",
       "Condition": {
         "BoolIfExists":               { "aws:MultiFactorAuthPresent": "false" },
-        "NumericGreaterThanIfExists": { "aws:MultiFactorAuthAge":     "900"   }
+        "NumericGreaterThanIfExists": { "aws:MultiFactorAuthAge":     "900"   },
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::123456789012:root",
+            "arn:aws:iam::*:role/aws-service-role/*"
+          ]
+        }
       }
     }
   ]

@@ -14,8 +14,11 @@
       ],
       "Resource": "arn:aws:kms:*:123456789012:key/*",
       "Condition": {
-        "StringNotEqualsIfExists": {
-          "aws:PrincipalARN": "arn:aws:iam::123456789012:role/KmsKeyAdmin"
+        "ArnNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::123456789012:role/KmsKeyAdmin",
+            "arn:aws:sts::123456789012:assumed-role/KmsKeyAdmin/*"
+          ]
         }
       }
     },
@@ -31,22 +34,28 @@
       "Resource": "*"
     },
     {
-      "Sid": "DenyRootPrincipalExceptBilling",
+      "Sid": "DenyRootPrincipalExceptRecoveryAndBilling",
       "Effect": "Deny",
       "NotAction": [
         "aws-portal:*",
         "billing:*",
         "ce:*",
         "consoleapp:*",
-        "iam:*",
+        "iam:GetAccountSummary",
+        "iam:ListAccount*",
+        "iam:GetAccountPasswordPolicy",
+        "iam:ChangePassword",
         "sso:*",
         "sso-directory:*",
         "support:*",
+        "kms:PutKeyPolicy",
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
         "organizations:DescribeOrganization"
       ],
       "Resource": "*",
       "Condition": {
-        "StringLike": {
+        "ArnLike": {
           "aws:PrincipalArn": "arn:aws:iam::123456789012:root"
         }
       }

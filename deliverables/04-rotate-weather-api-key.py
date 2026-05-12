@@ -48,22 +48,40 @@ ADMIN_TOKEN_ARN = os.environ["WEATHER_ADMIN_TOKEN_ARN"]
 # Helpers
 # ---------------------------------------------------------------------------
 def _admin_token() -> str:
-    """Fetch the Weather admin API bearer token from a separate secret."""
-    return sm.get_secret_value(SecretId=ADMIN_TOKEN_ARN)["SecretString"]
+    """Fetch the Weather admin API bearer token from a separate secret.
+
+    Accepts either a raw string secret or a JSON object with a ``token`` key,
+    so the admin-token secret can be stored either way without breaking us.
+    """
+    raw = sm.get_secret_value(SecretId=ADMIN_TOKEN_ARN)["SecretString"]
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict) and "token" in parsed:
+            return parsed["token"]
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return raw
 
 
 def _describe(arn: str) -> dict[str, Any]:
     return sm.describe_secret(SecretId=arn)
 
 
-def _ensure_rotation_ready(meta: dict[str, Any], token: str) -> bool:
+def _ensure_rotation_ready(meta: dict[str, Any], token: str, step: str) -> bool:
     """Validate that rotation is enabled and this token is the pending one.
 
     Returns False when the token is already AWSCURRENT — that means the
     rotation already finished on a previous attempt and we should no-op.
+
+    The token-staging check is skipped for ``createSecret`` because at that
+    step Secrets Manager has only just registered the new version and the
+    AWSPENDING label write may still be propagating — the official AWS
+    rotation template doesn't require AWSPENDING membership until setSecret.
     """
     if not meta.get("RotationEnabled"):
         raise ValueError(f"Secret {meta['ARN']} is not enabled for rotation")
+    if step == "createSecret":
+        return True
     versions = meta["VersionIdsToStages"]
     if token not in versions:
         raise ValueError(f"ClientRequestToken {token} not staged on the secret")
@@ -93,7 +111,11 @@ def create_secret(arn: str, token: str) -> None:
             token,
         )
         return
-    except sm.exceptions.ResourceNotFoundException:
+    except (sm.exceptions.ResourceNotFoundException,
+            sm.exceptions.InvalidRequestException):
+        # ResourceNotFoundException: token version doesn't exist yet (fresh).
+        # InvalidRequestException: version exists but has no value yet
+        # (Secrets Manager raced the staging-label write); proceed to write it.
         pass
 
     admin_bearer = _admin_token()
@@ -107,8 +129,10 @@ def create_secret(arn: str, token: str) -> None:
         body=json.dumps({"label": f"rotated-{token[:8]}"}).encode(),
     )
     if resp.status >= 300:
+        # Do NOT log resp.data — even on error, the body may contain the new key.
         raise RuntimeError(
-            f"Weather admin POST /keys returned {resp.status}: {resp.data!r}"
+            f"Weather admin POST /keys returned status {resp.status} "
+            f"(body redacted, length={len(resp.data) if resp.data else 0})"
         )
 
     payload = json.loads(resp.data)
@@ -154,10 +178,11 @@ def test_secret(arn: str, token: str) -> None:
         f"{WEATHER_API_URL}/v1/current?lat=0&lon=0",
         headers={"X-Api-Key": pending["api_key"]},
     )
-    if resp.status != 200:
+    if resp.status >= 300:
+        # Don't log the response body — even errors can echo the key back.
         raise RuntimeError(
             "testSecret: AWSPENDING key did not authenticate; "
-            f"status={resp.status} body={resp.data!r}"
+            f"status={resp.status} (body redacted)"
         )
     LOG.info(
         "testSecret: AWSPENDING key id=%s verified against live API",
@@ -219,9 +244,8 @@ def finish_secret(arn: str, token: str) -> None:
         )
         if resp.status >= 300 and resp.status != 404:
             LOG.warning(
-                "finishSecret: old key revocation returned %s: %s",
+                "finishSecret: old key revocation returned status %s (body redacted)",
                 resp.status,
-                resp.data,
             )
         else:
             LOG.info(
@@ -254,7 +278,7 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> None:
     if step not in STEPS:
         raise ValueError(f"Unknown rotation step: {step}")
 
-    if not _ensure_rotation_ready(_describe(arn), token):
+    if not _ensure_rotation_ready(_describe(arn), token, step):
         return  # token already current; idempotent no-op
 
     STEPS[step](arn, token)

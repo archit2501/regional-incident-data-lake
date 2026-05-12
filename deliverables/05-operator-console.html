@@ -58,9 +58,9 @@
     <div class="flex-1"></div>
 
     <!-- role switcher -->
-    <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-md p-0.5 text-[11px]">
-      <button data-role="stakeholder" class="role-btn px-2.5 py-1 rounded text-slate-700 dark:text-slate-200">Stakeholder</button>
-      <button data-role="operator" class="role-btn px-2.5 py-1 rounded text-slate-700 dark:text-slate-200">Operator</button>
+    <div role="radiogroup" aria-label="View role" class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-md p-0.5 text-[11px]">
+      <button data-role="stakeholder" role="radio" aria-checked="false" class="role-btn px-2.5 py-1 rounded text-slate-700 dark:text-slate-200 ring-focus">Stakeholder</button>
+      <button data-role="operator"    role="radio" aria-checked="false" class="role-btn px-2.5 py-1 rounded text-slate-700 dark:text-slate-200 ring-focus">Operator</button>
     </div>
 
     <!-- date filter -->
@@ -152,9 +152,9 @@
         <div class="flex-1"></div>
         <div class="flex items-center gap-1 text-[11px]">
           <span class="text-slate-500 dark:text-slate-400">layers</span>
-          <button class="layer-btn px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" data-layer="collision" aria-pressed="true">collisions</button>
-          <button class="layer-btn px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" data-layer="congestion" aria-pressed="true">congestion</button>
-          <button class="layer-btn px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" data-layer="hazard" aria-pressed="true">hazards</button>
+          <button class="layer-btn px-2 py-0.5 rounded border border-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 ring-focus" data-layer="collision" aria-pressed="true">collisions</button>
+          <button class="layer-btn px-2 py-0.5 rounded border border-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 ring-focus" data-layer="congestion" aria-pressed="true">congestion</button>
+          <button class="layer-btn px-2 py-0.5 rounded border border-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 ring-focus" data-layer="hazard" aria-pressed="true">hazards</button>
         </div>
       </div>
       <div class="relative" style="height: 540px;">
@@ -243,11 +243,11 @@
         <summary class="px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
           <span class="chev text-slate-400">▶</span>
           <h3 class="text-sm font-semibold flex-1">KMS &amp; access audit</h3>
-          <select id="audit-filter" class="text-[10px] bg-slate-100 dark:bg-slate-800 border-0 rounded px-1.5 py-0.5 ring-focus">
+          <select id="audit-filter" aria-label="Filter audit events" class="text-[10px] bg-slate-100 dark:bg-slate-800 border-0 rounded px-1.5 py-0.5 ring-focus">
             <option value="all">all events</option>
             <option value="kms:Decrypt">kms:Decrypt</option>
             <option value="sts:AssumeRole">break-glass</option>
-            <option value="kms:PutKeyPolicy">policy edits</option>
+            <option value="kms:GetKeyPolicy">policy reads</option>
           </select>
         </summary>
         <div id="audit-list" class="p-1.5 space-y-0.5 max-h-[260px] overflow-auto text-[11px] font-mono"></div>
@@ -276,7 +276,7 @@
         </div>
         <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
           <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Skew monitor</div>
-          <div>Glue job emits Spark metrics to CloudWatch <code>EMRServerless/Spark</code> namespace; we GET <code>GetMetricData</code> for partition size histograms. The "after" view comes from the salted aggregator's per-bucket counts emitted as custom Glue metrics.</div>
+          <div>AWS Glue job emits Spark metrics to the CloudWatch <code>Glue</code> namespace (dimensioned by JobName + JobRunId); we call <code>cloudwatch:GetMetricData</code> for partition-size histograms. The "after" view comes from the salted aggregator's per-bucket counts published as custom metrics via <code>cloudwatch:PutMetricData</code>.</div>
         </div>
         <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
           <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Rotation status</div>
@@ -314,11 +314,12 @@
 <div id="toast-region" aria-live="polite" class="fixed bottom-4 right-4 z-[1000] space-y-2 pointer-events-none"></div>
 
 <!-- ============== HELP MODAL ============== -->
-<div id="help-modal" class="hidden fixed inset-0 z-[999] bg-slate-950/60 backdrop-blur-sm grid place-items-center p-4">
-  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-5 space-y-3">
+<div id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title" aria-hidden="true"
+     class="hidden fixed inset-0 z-[999] bg-slate-950/60 backdrop-blur-sm grid place-items-center p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-5 space-y-3" tabindex="-1">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold">Keyboard shortcuts</h3>
-      <button id="help-close" class="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-lg leading-none">×</button>
+      <h3 id="help-title" class="text-sm font-semibold">Keyboard shortcuts</h3>
+      <button id="help-close" aria-label="Close help" class="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-lg leading-none ring-focus">×</button>
     </div>
     <table class="text-[12px] w-full">
       <tbody class="[&_tr]:border-t [&_tr]:border-slate-100 dark:[&_tr]:border-slate-800/60 [&_td]:py-1.5 [&_td]:pr-3">
@@ -457,9 +458,14 @@ document.querySelectorAll('.layer-btn').forEach(btn => {
     const layer = btn.dataset.layer;
     const on = btn.getAttribute('aria-pressed') === 'true';
     btn.setAttribute('aria-pressed', String(!on));
-    btn.classList.toggle('bg-slate-200', on);
-    btn.classList.toggle('dark:bg-slate-700', on);
-    btn.classList.toggle('opacity-50', on);
+    // Pressed state = initial active style (indigo). Unpressed = muted.
+    btn.classList.toggle('bg-indigo-50', !on);
+    btn.classList.toggle('dark:bg-indigo-900/40', !on);
+    btn.classList.toggle('border-indigo-400', !on);
+    btn.classList.toggle('text-indigo-700', !on);
+    btn.classList.toggle('dark:text-indigo-200', !on);
+    btn.classList.toggle('opacity-40', on);
+    btn.classList.toggle('line-through', on);
     if (on) activeLayers.delete(layer); else activeLayers.add(layer);
     renderHeatmap();
   });
@@ -567,12 +573,14 @@ document.getElementById('audit-filter').addEventListener('change', renderAudit);
 // ROLE SWITCHER
 // ============================================================
 function setRole(role) {
+  document.documentElement.dataset.role = role;
   document.querySelectorAll('[data-view]').forEach(el => {
     const matches = el.dataset.view === role || role === 'operator';
     el.style.display = matches ? '' : 'none';
   });
   document.querySelectorAll('.role-btn').forEach(b => {
     const active = b.dataset.role === role;
+    b.setAttribute('aria-checked', String(active));
     b.classList.toggle('bg-white', active);
     b.classList.toggle('dark:bg-slate-700', active);
     b.classList.toggle('shadow-sm', active);
@@ -642,24 +650,53 @@ setTimeout(() => toast('Quarantine alert · agency-c/feed-042.zip (md5 mismatch)
 // HELP MODAL
 // ============================================================
 const helpModal = document.getElementById('help-modal');
-function openHelp()  { helpModal.classList.remove('hidden'); }
-function closeHelp() { helpModal.classList.add('hidden'); }
+let helpReturnFocus = null;
+function openHelp() {
+  helpReturnFocus = document.activeElement;
+  helpModal.classList.remove('hidden');
+  helpModal.setAttribute('aria-hidden', 'false');
+  document.getElementById('help-close').focus();
+}
+function closeHelp() {
+  helpModal.classList.add('hidden');
+  helpModal.setAttribute('aria-hidden', 'true');
+  if (helpReturnFocus && typeof helpReturnFocus.focus === 'function') {
+    helpReturnFocus.focus();
+  }
+}
+function helpOpen() { return !helpModal.classList.contains('hidden'); }
 document.getElementById('help-btn').addEventListener('click', openHelp);
 document.getElementById('help-close').addEventListener('click', closeHelp);
 helpModal.addEventListener('click', e => { if (e.target === helpModal) closeHelp(); });
+// Trap Tab inside the modal so keyboard users can't tab into the obscured page.
+helpModal.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const focusables = helpModal.querySelectorAll('button, [tabindex]:not([tabindex="-1"])');
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last  = focusables[focusables.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 
 // ============================================================
 // KEYBOARD SHORTCUTS
 // ============================================================
 document.addEventListener('keydown', e => {
   if (e.target.matches('input, textarea, select')) return;
+  // Escape always works (to close the modal). All other shortcuts pause while modal is open.
+  if (e.key === 'Escape') { closeHelp(); return; }
+  if (helpOpen()) return;
   if (e.key === 'd' || e.key === 'D') document.getElementById('dark-btn').click();
   else if (e.key === 'r' || e.key === 'R') refresh();
   else if (e.key === '1') setRole('stakeholder');
   else if (e.key === '2') setRole('operator');
-  else if (e.key === '/') { e.preventDefault(); document.getElementById('audit-filter').focus(); }
+  else if (e.key === '/') {
+    // audit-filter is inside the operator-only rail; skip silently in stakeholder mode.
+    const filter = document.getElementById('audit-filter');
+    if (filter && filter.offsetParent !== null) { e.preventDefault(); filter.focus(); }
+  }
   else if (e.key === '?') openHelp();
-  else if (e.key === 'Escape') closeHelp();
 });
 
 // Initial render of the heatmap after layout settles.

@@ -27,22 +27,37 @@ AQE detects partitions whose size exceeds `5× the median` (and 256 MB absolute)
 
 Salt the group key with a uniform random 0..N-1 suffix, aggregate by `(key, salt)`, then aggregate the partial results by `key`. The salted stage parallelizes N-way; the second stage reduces only N partial rows per hot key. See `03-glue-job-skeleton.py::aggregate_salted` — 64 buckets convert one hot partition into 64 balanced ones at the cost of one extra shuffle of N rows per hot key. Cheap.
 
+**Math caveat:** for `count` / `sum` this composes trivially. For `avg` it does **not** — `avg(avg(x))` ≠ `avg(x)` when bucket sizes differ (which they do under random salting). Emit `sum` and `count` from the first stage and divide in the second:
+
 ```python
 salted = df.withColumn("_salt", (F.rand() * 64).cast("int"))
-stage1 = salted.groupBy("intersection_id", "_salt").agg(F.count("*").alias("partial"))
-final  = stage1.groupBy("intersection_id").agg(F.sum("partial").alias("total"))
+stage1 = salted.groupBy("intersection_id", "_salt").agg(
+    F.count("*").alias("partial_pings"),
+    F.sum("lat").alias("partial_sum_lat"),
+)
+final  = stage1.groupBy("intersection_id").agg(
+    F.sum("partial_pings").alias("ping_count"),
+    (F.sum("partial_sum_lat") / F.sum("partial_pings")).alias("centroid_lat"),
+)
 ```
 
 ### 3. S3 output partitioning that doesn't reintroduce skew
 
-Partitioning Parquet output by `intersection_id` recreates the problem at write time — one writer task per distinct intersection, the hot one running forever. Partition by **time and region only** (`region`, `event_date`, `event_hour`) and let `intersection_id` live as a column inside each Parquet file. Spatial queries stay fast because we add a secondary repartition on a finer composite hash before writing:
+Partitioning Parquet output by `intersection_id` recreates the problem at write time — one writer task per distinct intersection, the hot one running forever. Partition by **time and region only** (`region`, `event_date`, `event_hour`) and let `intersection_id` live as a column inside each Parquet file.
+
+Pre-write repartition needs a per-row **random salt**, not the `intersection_id` itself — hashing the tuple `(region, date, hour, intersection_id)` deterministically funnels all 10 M hot-intersection rows back into a single partition. Replace `intersection_id` in the repartition expression with `(F.rand() * SALT_BUCKETS).cast("int")`:
 
 ```python
-df.repartition(400, "region", "event_date", "event_hour", "intersection_id") \
-  .write.partitionBy("region", "event_date", "event_hour").parquet(TARGET)
+df.repartition(400,
+   "region", "event_date", "event_hour",
+   (F.rand() * SALT_BUCKETS).cast("int")
+).write \
+ .option("maxRecordsPerFile", 500_000) \
+ .partitionBy("region", "event_date", "event_hour") \
+ .parquet(TARGET)
 ```
 
-The hot intersection now spreads across roughly `400 / (regions × hours)` writer tasks instead of one. For downstream queries that filter by intersection, add a Glue Catalog secondary index, or migrate the curated layer to Iceberg/Hudi with Z-order on `(lat, lon)` for spatial pruning.
+The hot intersection now spreads across roughly `400 / (regions × hours)` writer tasks instead of one. `maxRecordsPerFile` caps the file count from exploding when 400 input partitions collide on a few `(region, date, hour)` dirs. For downstream queries that filter by intersection, add a Glue Catalog secondary index, or migrate the curated layer to Iceberg/Hudi with Z-order on `(lat, lon)` for spatial pruning.
 
 ## What was rejected, and why
 

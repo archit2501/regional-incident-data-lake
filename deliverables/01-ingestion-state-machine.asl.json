@@ -17,7 +17,9 @@
         "checksumValid.$": "$.Payload.checksumValid",
         "computedMd5.$": "$.Payload.computedMd5",
         "expectedMd5.$": "$.Payload.expectedMd5",
-        "sizeBytes.$": "$.Payload.sizeBytes"
+        "sizeBytes.$": "$.Payload.sizeBytes",
+        "copySource.$": "$.Payload.copySource",
+        "failureReason.$": "$.Payload.failureReason"
       },
       "ResultPath": "$.validation",
       "Retry": [
@@ -67,7 +69,7 @@
               "Parameters": {
                 "Bucket": "incident-quarantine-prod",
                 "Key.$": "$.key",
-                "CopySource.$": "States.Format('{}/{}', $.bucket, $.key)"
+                "CopySource.$": "$.validation.copySource"
               },
               "ResultPath": null,
               "Next": "DeleteFromLanding"
@@ -92,8 +94,8 @@
               "Resource": "arn:aws:states:::sns:publish",
               "Parameters": {
                 "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
-                "Subject": "Incident ingest quarantined: checksum mismatch",
-                "Message.$": "States.Format('File s3://{}/{} quarantined. Expected MD5 {}, computed {}.', $.bucket, $.key, $.validation.expectedMd5, $.validation.computedMd5)"
+                "Subject": "Incident ingest quarantined",
+                "Message.$": "States.Format('File s3://{}/{} quarantined. Reason: {}. Expected MD5 {}, computed {}.', $.bucket, $.key, $.validation.failureReason, $.validation.expectedMd5, $.validation.computedMd5)"
               },
               "End": true
             }
@@ -198,7 +200,7 @@
       "Parameters": {
         "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
         "Subject": "Incident ingest FAILED",
-        "Message.$": "States.JsonToString($)"
+        "Message.$": "States.Format('Ingest failed for s3://{}/{}. See Step Functions execution for full context.', $.bucket, $.key)"
       },
       "ResultPath": "$.notification",
       "Next": "IngestionFailed"

@@ -78,23 +78,28 @@ def anonymize(df: DataFrame) -> DataFrame:
 # 3. Two-stage salted aggregation for the skewed groupBy(intersection_id)
 #    Stage 1: aggregate by (intersection_id, salt). Each (intersection, salt)
 #             bucket is small, so SALT_BUCKETS executors share the load.
+#             Emit sum + count (NOT avg) so the second stage can compute a
+#             correctly-weighted centroid — avg(avg(x)) ≠ avg(x) when group
+#             sizes differ, which they do under salting.
 #    Stage 2: strip the salt and re-aggregate per intersection — only
 #             SALT_BUCKETS partial rows per hot key to shuffle.
 # ---------------------------------------------------------------------------
 def aggregate_salted(df: DataFrame) -> DataFrame:
     salted = df.withColumn(
         "_salt",
+        # rand(seed=...) is evaluated per row (the seed only fixes the stream),
+        # so this produces a uniform 0..SALT_BUCKETS-1 salt per record.
         (F.rand(seed=1729) * SALT_BUCKETS).cast("int"),
     )
     stage1 = salted.groupBy("intersection_id", "_salt").agg(
         F.count("*").alias("partial_pings"),
-        F.avg("lat").alias("partial_lat"),
-        F.avg("lon").alias("partial_lon"),
+        F.sum("lat").alias("partial_sum_lat"),
+        F.sum("lon").alias("partial_sum_lon"),
     )
     return stage1.groupBy("intersection_id").agg(
         F.sum("partial_pings").alias("ping_count"),
-        F.avg("partial_lat").alias("centroid_lat"),
-        F.avg("partial_lon").alias("centroid_lon"),
+        (F.sum("partial_sum_lat") / F.sum("partial_pings")).alias("centroid_lat"),
+        (F.sum("partial_sum_lon") / F.sum("partial_pings")).alias("centroid_lon"),
     )
 
 
@@ -107,16 +112,23 @@ def aggregate_salted(df: DataFrame) -> DataFrame:
 raw = spark.read.json(SOURCE)
 clean = anonymize(raw)
 
+# Pre-write repartition: include a per-row random salt INSTEAD of
+# intersection_id. Hashing (region, date, hour, intersection_id) as a tuple
+# would still funnel all 10 M hot-intersection rows into a single partition,
+# because the tuple hash is deterministic per key. A random salt breaks the
+# hot key across multiple writer tasks so a single (region, date, hour)
+# directory is produced by ~400/(regions*hours) writers, not one.
 write_ready = clean.repartition(
     400,
     F.col("region"),
     F.col("event_date"),
     F.col("event_hour"),
-    F.col("intersection_id"),
+    (F.rand() * SALT_BUCKETS).cast("int"),
 )
 
 (
     write_ready.write.mode("append")
+    .option("maxRecordsPerFile", 500_000)
     .partitionBy("region", "event_date", "event_hour")
     .parquet(TARGET)
 )
