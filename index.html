@@ -1,621 +1,755 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="Regional Incident Data Lake AWS architecture assignment website with visual explanations and in-page artifact review." />
-<title>Regional Incident Data Lake - Assignment Website</title>
+<meta name="description" content="Regional Incident Data Lake — AWS architecture by Archit Jain. Step Functions ingestion, KMS zero-trust, Glue skew handling, Secrets Manager rotation, with an embedded operator console and in-page source viewer." />
+<meta name="theme-color" content="#070912" />
+<title>Regional Incident Data Lake — Archit Jain</title>
+<link rel="preconnect" href="https://rsms.me/" />
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c8cff' stroke-width='2.2'%3E%3Cpath d='M12 2 4 6v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10V6l-8-4Z'/%3E%3Cpath d='m9 12 2 2 4-5'/%3E%3C/svg%3E" />
 <style>
-  :root {
-    --bg: #f3f6fb;
-    --ink: #132033;
-    --muted: #65748a;
-    --panel: #ffffff;
-    --soft: #f8fafc;
-    --line: #d8e2ee;
-    --blue: #2563eb;
-    --green: #059669;
-    --amber: #d97706;
-    --red: #dc2626;
-    --teal: #0f766e;
-    --violet: #6d5dfc;
-    --shadow: 0 16px 38px rgba(19, 32, 51, 0.09);
-    --radius: 8px;
+  /* ──────────────────────────────────────────────────────────
+     Design tokens
+  ─────────────────────────────────────────────────────────── */
+  :root[data-theme="dark"] {
+    --bg: #070912;
+    --bg-elev: #0c1020;
+    --surface: rgba(17, 22, 38, 0.72);
+    --surface-strong: rgba(20, 26, 44, 0.92);
+    --ink: #eef2fb;
+    --ink-2: #c8d0e3;
+    --muted: #8b95ad;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --accent: #7c8cff;
+    --accent-2: #5af0c8;
+    --accent-3: #f7768e;
+    --grid: rgba(255, 255, 255, 0.045);
+    --grid-strong: rgba(255, 255, 255, 0.10);
+    --code-bg: #05080f;
+    --aurora-1: rgba(124, 140, 255, 0.35);
+    --aurora-2: rgba(90, 240, 200, 0.22);
+    --aurora-3: rgba(247, 118, 142, 0.22);
+    color-scheme: dark;
   }
-  [data-theme="dark"] {
-    --bg: #090f1d;
-    --ink: #e8eef8;
-    --muted: #99a8bc;
-    --panel: #111827;
-    --soft: #0f172a;
-    --line: #26344c;
-    --blue: #60a5fa;
-    --green: #34d399;
-    --amber: #fbbf24;
-    --red: #fb7185;
-    --teal: #2dd4bf;
-    --violet: #a5b4fc;
-    --shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+  :root[data-theme="light"] {
+    --bg: #f7f8fc;
+    --bg-elev: #ffffff;
+    --surface: rgba(255, 255, 255, 0.82);
+    --surface-strong: rgba(255, 255, 255, 0.96);
+    --ink: #0a0e1a;
+    --ink-2: #1c2438;
+    --muted: #5c6786;
+    --line: rgba(15, 23, 42, 0.08);
+    --line-strong: rgba(15, 23, 42, 0.16);
+    --accent: #4f46e5;
+    --accent-2: #0f766e;
+    --accent-3: #dc2626;
+    --grid: rgba(15, 23, 42, 0.05);
+    --grid-strong: rgba(15, 23, 42, 0.10);
+    --code-bg: #0b1020;
+    --aurora-1: rgba(79, 70, 229, 0.20);
+    --aurora-2: rgba(15, 118, 110, 0.16);
+    --aurora-3: rgba(220, 38, 38, 0.12);
+    color-scheme: light;
   }
+
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 15px/1.55 "Inter", "InterVariable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
   }
-  button, input { font: inherit; }
-  button { cursor: pointer; }
   a { color: inherit; text-decoration: none; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  code, pre { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+  /* ──────────────────────────────────────────────────────────
+     Background layers — animated dot grid + aurora mesh
+  ─────────────────────────────────────────────────────────── */
+  .bg-grid, .bg-aurora { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .bg-grid {
+    background-image:
+      radial-gradient(circle at 1px 1px, var(--grid) 1px, transparent 1.4px);
+    background-size: 26px 26px;
+    mask-image: radial-gradient(ellipse 1100px 700px at 50% -10%, black 30%, transparent 78%);
+    -webkit-mask-image: radial-gradient(ellipse 1100px 700px at 50% -10%, black 30%, transparent 78%);
+  }
+  .bg-aurora { overflow: hidden; }
+  .bg-aurora::before,
+  .bg-aurora::after,
+  .bg-aurora > i {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.9;
+  }
+  .bg-aurora::before { width: 720px; height: 720px; left: -180px; top: -260px; background: var(--aurora-1); animation: drift1 24s ease-in-out infinite alternate; }
+  .bg-aurora::after  { width: 640px; height: 640px; right: -140px; top: -100px; background: var(--aurora-2); animation: drift2 28s ease-in-out infinite alternate; }
+  .bg-aurora > i     { width: 540px; height: 540px; left: 38%; top: 280px; background: var(--aurora-3); animation: drift3 32s ease-in-out infinite alternate; }
+  @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(60px, 30px); } }
+  @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-50px, 40px); } }
+  @keyframes drift3 { from { transform: translate(0,0); } to { transform: translate(20px, -40px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .bg-aurora::before, .bg-aurora::after, .bg-aurora > i { animation: none; }
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     Layout primitives
+  ─────────────────────────────────────────────────────────── */
+  main, header, footer { position: relative; z-index: 1; }
+  .shell {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px 20px 48px;
+    display: grid;
+    gap: 28px;
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     Top bar — translucent, sticky, glassy
+  ─────────────────────────────────────────────────────────── */
   .topbar {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    background: color-mix(in srgb, var(--bg) 60%, transparent);
     border-bottom: 1px solid var(--line);
-    backdrop-filter: blur(12px);
   }
   .topbar-inner {
-    max-width: 1480px;
+    max-width: 1280px;
     margin: 0 auto;
-    padding: 10px 18px;
+    padding: 11px 20px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
   }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 315px;
-  }
+  .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
   .brand-mark {
-    width: 38px;
-    height: 38px;
-    border: 1px solid color-mix(in srgb, var(--blue) 42%, var(--line));
-    border-radius: var(--radius);
-    display: grid;
-    place-items: center;
-    color: var(--blue);
-    background: color-mix(in srgb, var(--blue) 9%, var(--panel));
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border-radius: 9px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, var(--bg-elev)), color-mix(in srgb, var(--accent-2) 18%, var(--bg-elev)));
+    border: 1px solid var(--line-strong);
+    color: var(--accent);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 25%, transparent), inset 0 0 0 1px rgba(255,255,255,0.05);
   }
-  .brand h1 { margin: 0; font-size: 14px; line-height: 1.15; }
-  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 11px; }
-  .nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .nav a, .theme-button {
-    border: 1px solid var(--line);
-    background: var(--panel);
+  .brand h1 { margin: 0; font-size: 13.5px; line-height: 1.1; letter-spacing: -0.01em; }
+  .brand p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+
+  .nav { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .nav a {
+    padding: 7px 11px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: background .18s ease, border-color .18s ease, color .18s ease;
+  }
+  .nav a:hover, .nav a:focus-visible {
+    background: var(--surface);
+    border-color: var(--line);
     color: var(--ink);
-    border-radius: 7px;
-    padding: 7px 10px;
-    font-size: 12px;
-    font-weight: 800;
-  }
-  .nav a:hover, .nav a:focus-visible, .theme-button:hover, .theme-button:focus-visible,
-  .btn:hover, .btn:focus-visible, .artifact-button:hover, .artifact-button:focus-visible {
     outline: none;
-    border-color: var(--blue);
-    transform: translateY(-1px);
   }
-  .spacer { flex: 1; }
-  .shell {
-    max-width: 1480px;
-    margin: 0 auto;
-    padding: 18px;
-    display: grid;
-    gap: 18px;
-  }
-  .panel {
-    background: color-mix(in srgb, var(--panel) 96%, transparent);
+  .spacer { flex: 1 1 auto; }
+  .icon-btn {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border-radius: 9px;
+    background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    color: var(--ink-2);
+    transition: border-color .18s ease, color .18s ease, transform .18s ease;
   }
-  .panel-head {
+  .icon-btn:hover, .icon-btn:focus-visible { border-color: var(--line-strong); color: var(--ink); transform: translateY(-1px); outline: none; }
+
+  /* ──────────────────────────────────────────────────────────
+     Cards (glass)
+  ─────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 16px 40px rgba(0,0,0,0.18);
+  }
+  .card-head {
     padding: 16px 18px;
     border-bottom: 1px solid var(--line);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
   }
-  .panel-head h2, .panel-head h3 { margin: 0; font-size: 15px; }
-  .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
-  .panel-body { padding: 18px; }
+  .card-head h2, .card-head h3 { margin: 0; font-size: 15px; letter-spacing: -0.005em; }
+  .card-head p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+  .card-body { padding: 18px; }
+
+  /* ──────────────────────────────────────────────────────────
+     Hero
+  ─────────────────────────────────────────────────────────── */
   .hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) 470px;
-    gap: 18px;
+    grid-template-columns: minmax(0, 1.1fr) 460px;
+    gap: 24px;
     align-items: stretch;
+    padding-top: 8px;
   }
-  .hero-main {
-    min-height: 560px;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    overflow: hidden;
-    position: relative;
-  }
+  .hero-main { padding: 32px 32px 28px; }
   .eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--blue);
-    font-size: 11px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 11px 6px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink-2);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    letter-spacing: .09em;
-    font-weight: 900;
   }
   .pulse {
-    width: 8px;
-    height: 8px;
+    width: 7px; height: 7px;
     border-radius: 999px;
-    background: currentColor;
-    box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 17%, transparent);
+    background: var(--accent-2);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-2) 60%, transparent);
+    animation: pulse 2.4s ease-out infinite;
   }
-  .hero h2 {
-    margin: 14px 0 12px;
-    max-width: 900px;
-    font-size: clamp(36px, 5.1vw, 74px);
-    line-height: .95;
-    letter-spacing: 0;
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-2) 60%, transparent); }
+    70%  { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent-2) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 transparent; }
   }
-  .hero-copy {
+  .display {
+    margin: 18px 0 14px;
+    font-size: clamp(38px, 5.4vw, 76px);
+    line-height: 0.97;
+    letter-spacing: -0.025em;
+    font-weight: 800;
+    background: linear-gradient(180deg, var(--ink) 0%, color-mix(in srgb, var(--ink) 72%, var(--muted)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    max-width: 22ch;
+  }
+  .display em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .lede {
     margin: 0;
-    max-width: 880px;
-    color: var(--muted);
-    font-size: 17px;
+    max-width: 60ch;
+    color: var(--ink-2);
+    font-size: 16.5px;
+    line-height: 1.6;
   }
-  .hero-actions { margin-top: 24px; display: flex; gap: 9px; flex-wrap: wrap; }
+  .pill-row { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .pill .dot {
+    width: 6px; height: 6px; border-radius: 999px; background: var(--accent);
+  }
+  .pill.green .dot { background: var(--accent-2); }
+  .pill.amber .dot { background: #f59e0b; }
+  .pill.red .dot { background: var(--accent-3); }
+
+  .hero-tiles { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 760px; }
+  .hero-tile {
+    display: grid; grid-template-columns: 36px 1fr; gap: 12px;
+    align-items: start;
+    padding: 14px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--surface), color-mix(in srgb, var(--surface) 92%, transparent));
+    border-radius: 12px;
+    transition: border-color .18s ease, transform .18s ease;
+  }
+  .hero-tile:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+  .hero-tile-num {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    border-radius: 9px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), color-mix(in srgb, var(--accent-2) 12%, transparent));
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .hero-tile strong { display: block; font-size: 13.5px; }
+  .hero-tile span.copy { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.5; }
+
+  .hero-actions { margin-top: 26px; display: flex; gap: 10px; flex-wrap: wrap; }
   .btn {
-    border: 1px solid var(--line);
-    background: var(--panel);
-    color: var(--ink);
-    border-radius: 7px;
-    padding: 10px 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 14px;
+    border-radius: 10px;
     font-size: 13px;
-    font-weight: 900;
+    font-weight: 700;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
   }
-  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-  .problem-strip {
-    margin-top: 22px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    max-width: 900px;
+  .btn:hover, .btn:focus-visible { transform: translateY(-1px); border-color: var(--accent); outline: none; }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, var(--accent-2)) 100%);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent);
   }
-  .problem-tile {
-    border: 1px solid var(--line);
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 12px;
-    display: grid;
-    grid-template-columns: 32px 1fr;
-    gap: 10px;
-    align-items: start;
+  .btn.primary:hover { color: #fff; }
+  .btn svg { width: 15px; height: 15px; }
+
+  /* Hero side — author card */
+  .hero-side { display: grid; grid-template-rows: auto auto auto; gap: 14px; }
+  .author-card { padding: 20px; }
+  .author-head { display: flex; align-items: center; gap: 14px; }
+  .avatar {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 40%, transparent), color-mix(in srgb, var(--accent-2) 30%, transparent));
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+    box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--accent) 70%, transparent);
   }
-  .problem-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 7px;
-    display: grid;
-    place-items: center;
-    font-weight: 900;
-    color: var(--blue);
-    background: color-mix(in srgb, var(--blue) 10%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
-  }
-  .problem-tile strong { display: block; font-size: 13px; }
-  .problem-tile span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .hero-kpis {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 20px;
-  }
-  .hero-kpis span {
-    border: 1px solid var(--line);
-    background: var(--panel);
+  .author-meta h3 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+  .author-meta p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  .author-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 6px;
+    padding: 3px 8px;
     border-radius: 999px;
+    background: color-mix(in srgb, var(--accent-2) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--accent-2) 30%, var(--line));
+    color: var(--accent-2);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .author-grid {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .author-stat {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface-strong) 70%, transparent);
+  }
+  .author-stat strong { display: block; font-size: 22px; line-height: 1; letter-spacing: -0.02em; }
+  .author-stat span { display: block; margin-top: 4px; color: var(--muted); font-size: 11.5px; }
+
+  .links-row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 7px; }
+  .link-chip {
+    display: inline-flex; align-items: center; gap: 7px;
     padding: 7px 10px;
-    color: var(--muted);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2);
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 600;
+    transition: border-color .18s ease, color .18s ease;
   }
-  .ops-board {
-    padding: 16px;
+  .link-chip:hover, .link-chip:focus-visible { border-color: var(--accent); color: var(--ink); outline: none; }
+  .link-chip svg { width: 14px; height: 14px; }
+
+  .stats-row {
+    padding: 18px 20px;
     display: grid;
-    gap: 12px;
-    min-height: 560px;
-    border-color: color-mix(in srgb, var(--blue) 24%, var(--line));
-  }
-  .ops-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: start;
-  }
-  .ops-head h3 { margin: 0; font-size: 14px; }
-  .ops-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
-  .live-badge {
-    display: inline-flex;
-    gap: 7px;
-    align-items: center;
-    color: var(--green);
-    border: 1px solid color-mix(in srgb, var(--green) 42%, var(--line));
-    background: color-mix(in srgb, var(--green) 9%, var(--panel));
-    border-radius: 999px;
-    padding: 5px 8px;
-    font-size: 11px;
-    font-weight: 900;
-    white-space: nowrap;
-  }
-  .map-card {
-    border: 1px solid var(--line);
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 12px;
-  }
-  .signal-map {
-    position: relative;
-    height: 230px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background:
-      linear-gradient(90deg, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 1px),
-      linear-gradient(0deg, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 1px),
-      var(--panel);
-    background-size: 38px 38px;
-    overflow: hidden;
-  }
-  .corridor {
-    position: absolute;
-    height: 4px;
-    background: color-mix(in srgb, var(--blue) 60%, transparent);
-    border-radius: 999px;
-    transform-origin: left center;
-  }
-  .corridor.a { width: 300px; left: 44px; top: 112px; transform: rotate(-14deg); }
-  .corridor.b { width: 260px; left: 92px; top: 54px; transform: rotate(33deg); background: color-mix(in srgb, var(--teal) 60%, transparent); }
-  .corridor.c { width: 240px; left: 126px; top: 172px; transform: rotate(-35deg); background: color-mix(in srgb, var(--amber) 60%, transparent); }
-  .hotspot {
-    position: absolute;
-    width: var(--s);
-    height: var(--s);
-    left: var(--x);
-    top: var(--y);
-    border-radius: 999px;
-    transform: translate(-50%, -50%);
-    background: color-mix(in srgb, var(--c) 22%, transparent);
-    border: 2px solid var(--c);
-    box-shadow: 0 0 0 7px color-mix(in srgb, var(--c) 12%, transparent);
-  }
-  .map-label {
-    position: absolute;
-    left: 12px;
-    bottom: 12px;
-    color: var(--muted);
-    font-size: 11px;
-    font-weight: 800;
-    background: color-mix(in srgb, var(--panel) 86%, transparent);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 6px 8px;
-  }
-  .ops-flow {
-    display: grid;
-    gap: 8px;
-  }
-  .flow-row {
-    display: grid;
-    grid-template-columns: 28px 1fr auto;
-    gap: 9px;
-    align-items: center;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--soft);
-    padding: 9px;
-  }
-  .flow-dot {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    display: grid;
-    place-items: center;
-    color: var(--blue);
-    background: color-mix(in srgb, var(--blue) 10%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
-    font-weight: 900;
-  }
-  .flow-row strong { display: block; font-size: 12px; }
-  .flow-row span { display: block; color: var(--muted); font-size: 11px; }
-  .flow-status { font-size: 11px; font-weight: 900; color: var(--green); }
-  .risk-meter {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--soft);
-    padding: 12px;
-    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
   }
-  .meter-row {
-    display: grid;
-    grid-template-columns: 120px 1fr 46px;
-    align-items: center;
-    gap: 9px;
-    font-size: 12px;
-    color: var(--muted);
-  }
+  .stats-row .author-stat strong { font-size: 22px; color: var(--ink); }
+
+  .live-card { padding: 18px 20px; }
+  .live-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .live-head h3 { margin: 0; font-size: 14px; }
+  .live-head .pill { padding: 4px 9px; font-size: 11px; }
+  .live-bars { margin-top: 14px; display: grid; gap: 10px; }
+  .live-bar { display: grid; grid-template-columns: 120px 1fr auto; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); }
   .bar {
-    height: 8px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--line) 72%, transparent);
+    height: 6px; border-radius: 999px;
+    background: color-mix(in srgb, var(--line-strong) 60%, transparent);
     overflow: hidden;
   }
-  .bar i { display: block; height: 100%; border-radius: inherit; background: var(--green); width: var(--w); }
-  .bar.red i { background: var(--red); }
-  .bar.amber i { background: var(--amber); }
-  .score {
-    padding: 18px;
-    display: grid;
-    gap: 12px;
+  .bar i {
+    display: block; height: 100%;
+    border-radius: inherit;
+    width: var(--w);
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
   }
-  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .metric {
-    border: 1px solid var(--line);
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 12px;
+  .bar.warn i { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+  .live-bar strong { color: var(--ink); font-size: 11.5px; font-weight: 800; }
+
+  /* ──────────────────────────────────────────────────────────
+     Marquee — tech stack
+  ─────────────────────────────────────────────────────────── */
+  .marquee {
+    margin-top: 4px;
+    position: relative;
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 0;
+    background: color-mix(in srgb, var(--surface) 50%, transparent);
   }
-  .metric strong { display: block; font-size: 32px; line-height: 1; color: var(--green); }
-  .metric span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
-  .review-steps { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
-  .review-steps li {
-    display: grid;
-    grid-template-columns: 30px 1fr;
-    gap: 10px;
-    align-items: start;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--soft);
-    padding: 10px;
+  .marquee::before, .marquee::after {
+    content: "";
+    position: absolute; top: 0; bottom: 0;
+    width: 80px;
+    z-index: 2;
+    pointer-events: none;
   }
-  .review-steps b {
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    color: var(--blue);
-    background: color-mix(in srgb, var(--blue) 10%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--blue) 34%, var(--line));
-    border-radius: 6px;
+  .marquee::before { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+  .marquee::after { right: 0; background: linear-gradient(-90deg, var(--bg), transparent); }
+  .marquee-track {
+    display: flex; gap: 28px;
+    width: max-content;
+    animation: scrollx 38s linear infinite;
   }
-  .review-steps strong { display: block; font-size: 12px; }
-  .review-steps span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid var(--line);
-    background: var(--soft);
+  .marquee-track span {
+    display: inline-flex; align-items: center; gap: 8px;
     color: var(--muted);
-    border-radius: 999px;
-    padding: 5px 9px;
-    font-size: 11px;
-    font-weight: 900;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: -0.005em;
     white-space: nowrap;
   }
-  .chip.ok {
-    color: var(--green);
-    border-color: color-mix(in srgb, var(--green) 42%, var(--line));
-    background: color-mix(in srgb, var(--green) 9%, var(--panel));
+  .marquee-track span::before {
+    content: ""; width: 4px; height: 4px;
+    border-radius: 999px;
+    background: var(--accent);
   }
-  .chip.warn {
-    color: var(--amber);
-    border-color: color-mix(in srgb, var(--amber) 42%, var(--line));
-    background: color-mix(in srgb, var(--amber) 9%, var(--panel));
+  @keyframes scrollx {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
   }
-  .grid { display: grid; gap: 14px; }
-  .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .architecture { overflow: auto; }
-  .architecture svg { min-width: 1060px; width: 100%; height: auto; display: block; }
-  .svg-node rect, .svg-node polygon { fill: var(--soft); stroke: var(--line); stroke-width: 1.5; }
-  .svg-node text { fill: var(--ink); font: 900 13px ui-sans-serif, system-ui, sans-serif; }
-  .svg-node .sub { fill: var(--muted); font: 800 10.5px ui-monospace, SFMono-Regular, monospace; }
-  .svg-node.blue rect { stroke: var(--blue); fill: color-mix(in srgb, var(--blue) 10%, var(--panel)); }
-  .svg-node.green rect { stroke: var(--green); fill: color-mix(in srgb, var(--green) 10%, var(--panel)); }
-  .svg-node.red rect { stroke: var(--red); fill: color-mix(in srgb, var(--red) 9%, var(--panel)); }
-  .svg-node.amber polygon { stroke: var(--amber); fill: color-mix(in srgb, var(--amber) 10%, var(--panel)); }
-  .svg-node.teal rect { stroke: var(--teal); fill: color-mix(in srgb, var(--teal) 10%, var(--panel)); }
+  @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+
+  /* ──────────────────────────────────────────────────────────
+     About section — bento
+  ─────────────────────────────────────────────────────────── */
+  .about-bento {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 14px;
+  }
+  .about-bento > .card.span-tall { grid-row: span 2; }
+  .about-bento > .card.span-wide { grid-column: span 2; }
+
+  .bio { padding: 22px; }
+  .bio h3 { margin: 0; font-size: 14px; color: var(--muted); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .bio .name {
+    margin: 6px 0 4px;
+    font-size: clamp(28px, 3.6vw, 44px);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1;
+  }
+  .bio .role { margin: 0 0 14px; color: var(--ink-2); font-weight: 600; font-size: 14px; }
+  .bio p { margin: 0 0 12px; color: var(--ink-2); line-height: 1.65; }
+  .bio p:last-of-type { margin-bottom: 18px; }
+
+  .timeline { padding: 18px 20px; }
+  .timeline h3 { margin: 0 0 12px; font-size: 13.5px; letter-spacing: -0.005em; }
+  .tl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .tl-item { display: grid; grid-template-columns: 12px 1fr; gap: 12px; position: relative; }
+  .tl-item::before {
+    content: "";
+    width: 9px; height: 9px;
+    border-radius: 999px;
+    background: var(--accent);
+    margin-top: 7px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .tl-item:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 4px; top: 18px; bottom: -14px;
+    width: 1px;
+    background: linear-gradient(var(--line-strong), transparent);
+  }
+  .tl-item h4 { margin: 0; font-size: 13.5px; }
+  .tl-item .where { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+  .tl-item .when { display: inline-block; margin-top: 4px; color: var(--ink-2); font-size: 11.5px; font-weight: 700; }
+  .tl-item ul { margin: 6px 0 0; padding-left: 16px; color: var(--ink-2); font-size: 12.5px; line-height: 1.55; }
+  .tl-item ul li { margin-bottom: 4px; }
+
+  .creds { padding: 18px 20px; display: grid; gap: 14px; }
+  .creds h3 { margin: 0; font-size: 13.5px; }
+  .creds .group { display: grid; gap: 6px; }
+  .creds .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+  .creds .value { color: var(--ink-2); font-size: 13px; }
+  .badge-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .badge {
+    padding: 5px 9px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2);
+  }
+  .badge.gold {
+    border-color: color-mix(in srgb, #f59e0b 50%, var(--line));
+    background: color-mix(in srgb, #f59e0b 11%, var(--surface));
+    color: #fbbf24;
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     Architecture SVG
+  ─────────────────────────────────────────────────────────── */
+  .arch { overflow: auto; padding: 18px; }
+  .arch svg { min-width: 1080px; width: 100%; height: auto; display: block; }
+  .svg-node rect, .svg-node polygon { fill: color-mix(in srgb, var(--surface-strong) 80%, transparent); stroke: var(--line-strong); stroke-width: 1.4; }
+  .svg-node text { fill: var(--ink); font: 800 13px "Inter", ui-sans-serif, system-ui; }
+  .svg-node .sub { fill: var(--muted); font: 700 10.5px "JetBrains Mono", ui-monospace, monospace; }
+  .svg-node.blue rect { stroke: var(--accent); fill: color-mix(in srgb, var(--accent) 11%, transparent); }
+  .svg-node.green rect { stroke: var(--accent-2); fill: color-mix(in srgb, var(--accent-2) 10%, transparent); }
+  .svg-node.red rect { stroke: var(--accent-3); fill: color-mix(in srgb, var(--accent-3) 10%, transparent); }
+  .svg-node.amber polygon { stroke: #f59e0b; fill: color-mix(in srgb, #f59e0b 11%, transparent); }
+  .svg-node.teal rect { stroke: #0fb8a4; fill: color-mix(in srgb, #0fb8a4 11%, transparent); }
   .svg-edge { stroke: var(--muted); stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
-  .svg-edge.good { stroke: var(--green); marker-end: url(#arrow-good); }
-  .svg-edge.bad { stroke: var(--red); marker-end: url(#arrow-bad); }
-  .rail { fill: color-mix(in srgb, var(--violet) 9%, var(--panel)); stroke: var(--violet); stroke-width: 1.3; stroke-dasharray: 8 5; }
-  .rail-text { fill: var(--violet); font: 900 12px ui-sans-serif, system-ui, sans-serif; }
+  .svg-edge.good { stroke: var(--accent-2); marker-end: url(#arrow-good); }
+  .svg-edge.bad { stroke: var(--accent-3); marker-end: url(#arrow-bad); }
+  .svg-rail { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: var(--accent); stroke-width: 1.3; stroke-dasharray: 8 5; }
+  .svg-rail-text { fill: var(--accent); font: 900 12px "Inter", ui-sans-serif, system-ui; }
   .token {
     offset-path: path("M 112 152 L 240 152 L 388 152 L 548 152 L 730 152 L 905 152");
     animation: travel 5s linear infinite;
   }
-  @keyframes travel {
-    0% { offset-distance: 0%; opacity: 0; }
-    8% { opacity: 1; }
-    92% { opacity: 1; }
-    100% { offset-distance: 100%; opacity: 0; }
-  }
-  .problem {
-    display: grid;
-    grid-template-columns: 180px minmax(0, 1fr);
-    gap: 16px;
-    border: 1px solid var(--line);
-    background: color-mix(in srgb, var(--panel) 96%, transparent);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .problem-label {
-    border-right: 1px solid var(--line);
-    background: var(--soft);
-    padding: 16px;
-  }
-  .problem-label b { display: block; font-size: 42px; line-height: 1; color: var(--blue); }
-  .problem-label span {
-    display: block;
-    margin-top: 8px;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-  }
-  .problem-body { padding: 16px 16px 16px 0; display: grid; gap: 12px; }
-  .problem-body h3 { margin: 0; font-size: 21px; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .explain {
-    border: 1px solid var(--line);
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 12px;
-  }
-  .explain h4 {
-    margin: 0 0 7px;
-    color: var(--muted);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .07em;
-  }
-  .explain p { margin: 0; font-size: 13px; color: var(--ink); }
-  .check-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-  .check-list li { display: grid; grid-template-columns: 18px 1fr; gap: 7px; font-size: 13px; }
-  .tick { color: var(--green); font-weight: 900; }
-  .artifact-row { display: flex; flex-wrap: wrap; gap: 8px; }
-  .artifact-button {
-    border: 1px solid var(--line);
-    background: var(--soft);
-    color: var(--blue);
-    border-radius: 7px;
-    padding: 8px 9px;
-    font: 900 12px ui-monospace, SFMono-Regular, monospace;
-  }
+  @keyframes travel { 0% { offset-distance: 0%; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .token { display: none; } }
+
+  /* ──────────────────────────────────────────────────────────
+     Answers + viewer
+  ─────────────────────────────────────────────────────────── */
   .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 440px;
+    grid-template-columns: minmax(0, 1fr) 460px;
     gap: 18px;
     align-items: start;
   }
-  .source-viewer {
-    position: sticky;
-    top: 78px;
+  .answers { display: grid; gap: 14px; }
+  .problem {
+    display: grid; grid-template-columns: 170px 1fr; gap: 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color .18s ease, transform .18s ease;
   }
-  .viewer-toolbar {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
+  .problem:hover { border-color: var(--line-strong); }
+  .problem-tag {
+    padding: 18px;
+    border-right: 1px solid var(--line);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent);
   }
-  .viewer-path {
-    color: var(--blue);
-    font: 900 12px ui-monospace, SFMono-Regular, monospace;
+  .problem-tag b {
+    display: block;
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
+  .problem-tag span {
+    display: block;
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+  .problem-body { padding: 18px 18px 18px 0; display: grid; gap: 14px; }
+  .problem-body h3 { margin: 0; font-size: 21px; letter-spacing: -0.015em; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .explain {
+    padding: 12px;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-strong) 60%, transparent);
+    border-radius: 10px;
+  }
+  .explain h4 { margin: 0 0 7px; font-size: 10.5px; letter-spacing: .07em; color: var(--muted); text-transform: uppercase; }
+  .explain p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .checks li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  .checks .tick { color: var(--accent-2); font-weight: 900; }
+  .timeline-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .step {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface-strong) 50%, transparent);
+  }
+  .step b {
+    display: inline-grid; place-items: center;
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+    color: var(--accent);
+    margin-bottom: 9px;
+    font-weight: 800;
+  }
+  .step strong { display: block; font-size: 13px; }
+  .step span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+
+  .artifact-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .artifact-button {
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--accent);
+    font: 800 11.5px "JetBrains Mono", ui-monospace, monospace;
+    transition: border-color .18s ease, transform .18s ease, color .18s ease;
+  }
+  .artifact-button:hover { border-color: var(--accent); transform: translateY(-1px); }
+
+  .source-card { position: sticky; top: 78px; }
+  .viewer-toolbar { padding: 14px 18px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .viewer-path { color: var(--accent); font: 800 11.5px "JetBrains Mono", ui-monospace, monospace; }
   .codebox {
-    margin: 0;
-    background: #07111f;
-    color: #d9fbe7;
-    border-radius: 0 0 var(--radius) var(--radius);
+    margin: 12px 18px 18px;
+    background: var(--code-bg);
+    color: #d8e9ff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
     padding: 14px;
     overflow: auto;
-    min-height: 520px;
-    max-height: 720px;
-    font-size: 12px;
+    min-height: 480px;
+    max-height: 640px;
+    font-size: 11.5px;
     line-height: 1.55;
     white-space: pre-wrap;
     word-break: break-word;
   }
-  .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .step {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--soft);
-    padding: 12px;
-    min-height: 128px;
-  }
-  .step b {
-    display: inline-grid;
-    place-items: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--blue) 12%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
-    color: var(--blue);
-    margin-bottom: 10px;
-  }
-  .step strong { display: block; font-size: 14px; }
-  .step span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
-  .console-frame {
-    width: 100%;
-    height: 820px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--soft);
-  }
-  .gallery { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 14px; }
+
+  /* ──────────────────────────────────────────────────────────
+     Console embed, evidence, deploy
+  ─────────────────────────────────────────────────────────── */
+  .console-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
+  .console-frame { width: 100%; height: 820px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  .evidence-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 14px; }
   .shot {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
     overflow: hidden;
-    background: var(--soft);
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
   }
-  .shot img {
-    display: block;
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    background: #111827;
+  .shot img { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #04060d; }
+  .shot figcaption { margin: 0; padding: 11px 13px; color: var(--muted); font-size: 12px; }
+
+  .deploy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .codeblock {
+    margin: 0;
+    padding: 14px;
+    border-radius: 10px;
+    background: var(--code-bg);
+    color: #d8e9ff;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    line-height: 1.55;
+    overflow: auto;
   }
-  .shot figcaption { margin: 0; padding: 10px 12px; color: var(--muted); font-size: 12px; }
-  .footer { text-align: center; color: var(--muted); font-size: 12px; padding: 14px 0 8px; }
+
+  /* ──────────────────────────────────────────────────────────
+     Footer
+  ─────────────────────────────────────────────────────────── */
+  .footer {
+    margin-top: 8px;
+    padding: 28px 20px 36px;
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between;
+    color: var(--muted);
+    font-size: 12.5px;
+    border-top: 1px solid var(--line);
+  }
+  .footer a { color: var(--ink-2); }
+  .footer a:hover { color: var(--ink); }
+
+  /* ──────────────────────────────────────────────────────────
+     Responsive
+  ─────────────────────────────────────────────────────────── */
   @media (max-width: 1180px) {
-    .hero, .layout, .two { grid-template-columns: 1fr; }
-    .source-viewer { position: static; }
-    .three, .gallery { grid-template-columns: 1fr 1fr; }
-    .four, .timeline { grid-template-columns: 1fr 1fr; }
-    .cols { grid-template-columns: 1fr; }
+    .hero, .layout, .console-grid { grid-template-columns: 1fr; }
+    .source-card { position: static; }
+    .about-bento { grid-template-columns: 1fr 1fr; }
+    .about-bento > .card.span-tall { grid-row: auto; }
+    .about-bento > .card.span-wide { grid-column: span 2; }
+    .evidence-grid, .deploy-grid { grid-template-columns: 1fr 1fr; }
+    .timeline-4 { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 760px) {
-    .topbar-inner { flex-direction: column; align-items: flex-start; }
-    .spacer { display: none; }
-    .brand { min-width: 0; }
-    .shell { padding: 12px; }
-    .hero-main { min-height: 0; padding: 18px; }
+    .topbar-inner { flex-wrap: wrap; }
+    .nav { order: 3; width: 100%; }
+    .shell { padding: 12px 14px 32px; }
+    .hero-main { padding: 22px; }
+    .display { font-size: clamp(34px, 8vw, 50px); }
+    .hero-tiles { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .about-bento, .cols, .evidence-grid, .deploy-grid, .timeline-4 { grid-template-columns: 1fr; }
+    .about-bento > .card.span-wide { grid-column: auto; }
     .problem { grid-template-columns: 1fr; }
-    .problem-label { border-right: 0; border-bottom: 1px solid var(--line); }
-    .problem-body { padding: 16px; }
-    .metric-grid, .three, .four, .timeline, .gallery { grid-template-columns: 1fr; }
-    .console-frame { height: 680px; }
+    .problem-tag { border-right: 0; border-bottom: 1px solid var(--line); }
+    .problem-body { padding: 18px; }
+    .live-bar { grid-template-columns: 110px 1fr auto; }
+    .console-frame { height: 640px; }
   }
 </style>
 </head>
 <body>
+<div class="bg-aurora" aria-hidden="true"><i></i></div>
+<div class="bg-grid" aria-hidden="true"></div>
+
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="#top" aria-label="Regional Incident Data Lake home">
+    <a class="brand" href="#top" aria-label="Regional Incident Data Lake — home">
       <span class="brand-mark" aria-hidden="true">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2 4 6v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-5"/></svg>
       </span>
       <span>
         <h1>Regional Incident Data Lake</h1>
-        <p>Tamper-resistant geospatial ingestion</p>
+        <p>by Archit Jain · AWS architecture</p>
       </span>
     </a>
     <nav class="nav" aria-label="Main navigation">
       <a href="#overview">Overview</a>
+      <a href="#about">About</a>
       <a href="#architecture">Architecture</a>
       <a href="#answers">Answers</a>
       <a href="#console">Console</a>
@@ -623,137 +757,331 @@
       <a href="#deploy">Deploy</a>
     </nav>
     <span class="spacer"></span>
-    <button id="themeButton" class="theme-button" type="button">Theme</button>
+    <button id="themeButton" class="icon-btn" type="button" aria-label="Toggle theme">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/></svg>
+    </button>
   </div>
 </header>
 
 <main id="top" class="shell">
+
+  <!-- ───────────────────────────── HERO ───────────────────────────── -->
   <section id="overview" class="hero">
-    <div class="panel hero-main">
-      <div>
-        <span class="eyebrow"><span class="pulse"></span>Regional Incident Data Lake</span>
-        <h2>High-velocity public safety data, secured before it becomes intelligence.</h2>
-        <p class="hero-copy">
-          External agencies send GPS pings, incident logs, and vehicle telemetry into one regional lake.
-          The solution protects the pipeline at the two points that matter most: data integrity before
-          analytics, and privilege isolation before anyone can read raw location data.
-        </p>
-        <div class="problem-strip" aria-label="Primary problem and solution">
-          <div class="problem-tile">
-            <span class="problem-icon">01</span>
-            <span><strong>Poisoned input is stopped early</strong><span>MD5 validation gates every zip before extraction; failed files move to quarantine with SNS evidence.</span></span>
-          </div>
-          <div class="problem-tile">
-            <span class="problem-icon">02</span>
-            <span><strong>Raw coordinates stay isolated</strong><span>KMS explicit deny, Glue service constraints, MFA break-glass, SCP guardrails, and CloudTrail audit.</span></span>
-          </div>
+    <div class="card hero-main">
+      <span class="eyebrow"><span class="pulse"></span>Regional Incident Data Lake</span>
+      <h2 class="display">High-velocity public safety data, <em>secured before it becomes intelligence.</em></h2>
+      <p class="lede">
+        External agencies stream GPS pings, incident logs, and vehicle telemetry into one regional lake.
+        The architecture defends two points that matter most — data integrity before analytics, and privilege
+        isolation before anyone reads raw location data.
+      </p>
+
+      <div class="pill-row">
+        <span class="pill"><span class="dot"></span>Step Functions orchestration</span>
+        <span class="pill green"><span class="dot"></span>Glue anonymization</span>
+        <span class="pill amber"><span class="dot"></span>Skew-resilient PySpark</span>
+        <span class="pill red"><span class="dot"></span>Verified secret rotation</span>
+      </div>
+
+      <div class="hero-tiles" aria-label="Two architectural risks the design solves">
+        <div class="hero-tile">
+          <span class="hero-tile-num">01</span>
+          <span>
+            <strong>Poisoned input is stopped early</strong>
+            <span class="copy">MD5 gates every zip before extraction. Failed files quarantine with tagged metadata and an SNS alert.</span>
+          </span>
         </div>
-        <div class="hero-kpis" aria-label="Solution controls">
-          <span>Step Functions orchestration</span>
-          <span>Glue anonymization</span>
-          <span>Skew-resilient PySpark</span>
-          <span>Verified secret rotation</span>
+        <div class="hero-tile">
+          <span class="hero-tile-num">02</span>
+          <span>
+            <strong>Raw coordinates stay isolated</strong>
+            <span class="copy">KMS explicit deny + Glue via-service + MFA break-glass + Org SCP + CloudTrail audit trail.</span>
+          </span>
         </div>
       </div>
+
       <div class="hero-actions">
-        <a class="btn primary" href="#answers">Open the solution</a>
+        <a class="btn primary" href="#answers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          Open the solution
+        </a>
         <a class="btn" href="#architecture">Trace the architecture</a>
-        <a class="btn" href="#console">View the heatmap console</a>
+        <a class="btn" href="#about">About Archit</a>
       </div>
     </div>
-    <aside class="panel ops-board" aria-label="Incident operations visual">
-      <div class="ops-head">
-        <div>
+
+    <div class="hero-side">
+      <div class="card author-card">
+        <div class="author-head">
+          <div class="avatar" aria-hidden="true">AJ</div>
+          <div class="author-meta">
+            <h3>Archit Jain</h3>
+            <p>Full Stack Engineer · AI/ML · AWS Architect</p>
+            <span class="author-tag"><span class="pulse"></span>Available for technical reviews</span>
+          </div>
+        </div>
+        <div class="author-grid">
+          <div class="author-stat"><strong>3+</strong><span>years building AI + web systems</span></div>
+          <div class="author-stat"><strong>2×</strong><span>National hackathon podiums</span></div>
+        </div>
+        <div class="links-row">
+          <a class="link-chip" href="mailto:architjain2501@gmail.com" aria-label="Email Archit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg>
+            email
+          </a>
+          <a class="link-chip" href="https://github.com/archit2501" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.9 2.9 1.3 3.6 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4c2.3-1.5 3.3-1.2 3.3-1.2.7 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.5-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+            github
+          </a>
+          <a class="link-chip" href="https://linkedin.com/in/architjain01" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.86-3.04-1.86 0-2.15 1.45-2.15 2.95v5.66H9.34V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12Zm1.77 13.02H3.56V9h3.55v11.45Z"/></svg>
+            linkedin
+          </a>
+          <a class="link-chip" href="https://architjain.me" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+            architjain.me
+          </a>
+        </div>
+      </div>
+
+      <div class="card stats-row" aria-label="At-a-glance assignment metrics">
+        <div class="author-stat"><strong>4 / 4</strong><span>required problems answered</span></div>
+        <div class="author-stat"><strong>9</strong><span>artifacts viewable in-page</span></div>
+        <div class="author-stat"><strong>0</strong><span>downloads required</span></div>
+      </div>
+
+      <div class="card live-card" aria-label="Live ingest posture">
+        <div class="live-head">
           <h3>Live ingest posture</h3>
-          <p>Visual model of the data lake controls.</p>
+          <span class="pill green"><span class="dot"></span>controls active</span>
         </div>
-        <span class="live-badge"><span class="pulse"></span>controls active</span>
-      </div>
-      <div class="map-card">
-        <div class="signal-map" aria-label="Regional incident signal map">
-          <span class="corridor a"></span>
-          <span class="corridor b"></span>
-          <span class="corridor c"></span>
-          <span class="hotspot" style="--x:28%;--y:52%;--s:34px;--c:var(--green)"></span>
-          <span class="hotspot" style="--x:58%;--y:39%;--s:48px;--c:var(--amber)"></span>
-          <span class="hotspot" style="--x:73%;--y:68%;--s:28px;--c:var(--blue)"></span>
-          <span class="hotspot" style="--x:42%;--y:74%;--s:22px;--c:var(--teal)"></span>
-          <span class="map-label">anonymized regional heatmap · GPS rounded to 3 dp</span>
+        <div class="live-bars">
+          <div class="live-bar"><span>Poisoned input</span><span class="bar warn"><i style="--w:18%"></i></span><strong>low</strong></div>
+          <div class="live-bar"><span>Admin override</span><span class="bar warn"><i style="--w:12%"></i></span><strong>low</strong></div>
+          <div class="live-bar"><span>Skew resilience</span><span class="bar"><i style="--w:88%"></i></span><strong>ready</strong></div>
+          <div class="live-bar"><span>Rotation safety</span><span class="bar"><i style="--w:95%"></i></span><strong>verified</strong></div>
         </div>
       </div>
-      <div class="ops-flow">
-        <div class="flow-row"><span class="flow-dot">S3</span><span><strong>Landing feed</strong><span>zip + manifest received</span></span><em class="flow-status">guarded</em></div>
-        <div class="flow-row"><span class="flow-dot">MD5</span><span><strong>Integrity gate</strong><span>tamper check before extraction</span></span><em class="flow-status">pass/fail</em></div>
-        <div class="flow-row"><span class="flow-dot">KMS</span><span><strong>Raw data isolation</strong><span>admins blocked by explicit deny + SCP</span></span><em class="flow-status">locked</em></div>
-        <div class="flow-row"><span class="flow-dot">API</span><span><strong>Weather enrichment</strong><span>new key verified before old key retires</span></span><em class="flow-status">verified</em></div>
-      </div>
-      <div class="risk-meter" aria-label="Risk reduction summary">
-        <div class="meter-row"><span>Poisoned input</span><span class="bar red"><i style="--w:18%"></i></span><strong>low</strong></div>
-        <div class="meter-row"><span>Admin override</span><span class="bar amber"><i style="--w:12%"></i></span><strong>low</strong></div>
-        <div class="meter-row"><span>Skew failure</span><span class="bar"><i style="--w:84%"></i></span><strong>ready</strong></div>
-      </div>
-    </aside>
+    </div>
   </section>
 
-  <section id="architecture" class="panel">
-    <div class="panel-head">
+  <!-- ───────────────────────────── TECH MARQUEE ───────────────────────────── -->
+  <section class="marquee" aria-label="Technology stack used in this submission">
+    <div class="marquee-track">
+      <span>AWS Step Functions</span><span>AWS Glue 4.0</span><span>PySpark 3.3</span><span>AWS KMS</span><span>AWS Lambda</span><span>Python 3.12</span><span>boto3</span><span>Secrets Manager</span><span>Amazon S3</span><span>Amazon SNS</span><span>AWS Organizations SCP</span><span>CloudTrail</span><span>CloudWatch</span><span>EventBridge</span><span>Athena</span><span>Leaflet.js</span><span>Tailwind</span>
+      <!-- duplicate for seamless loop -->
+      <span>AWS Step Functions</span><span>AWS Glue 4.0</span><span>PySpark 3.3</span><span>AWS KMS</span><span>AWS Lambda</span><span>Python 3.12</span><span>boto3</span><span>Secrets Manager</span><span>Amazon S3</span><span>Amazon SNS</span><span>AWS Organizations SCP</span><span>CloudTrail</span><span>CloudWatch</span><span>EventBridge</span><span>Athena</span><span>Leaflet.js</span><span>Tailwind</span>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────── ABOUT ARCHIT ───────────────────────────── -->
+  <section id="about" class="card">
+    <div class="card-head">
+      <div>
+        <h2>About Archit Jain</h2>
+        <p>Full-stack engineer focused on AI-driven systems, cloud architecture, and developer experience.</p>
+      </div>
+      <span class="pill green"><span class="dot"></span>open to roles</span>
+    </div>
+    <div class="card-body">
+      <div class="about-bento">
+
+        <!-- Bio -->
+        <div class="card bio span-tall">
+          <h3>Profile</h3>
+          <div class="name">Archit Jain</div>
+          <p class="role">Full Stack Engineer · F1jobs.io (NeuraScribe Inc) · Austin, TX (remote, from Noida)</p>
+          <p>
+            I design and ship systems that connect machine learning with real product workflows. At F1jobs.io I lead
+            full-stack architecture on React, Node, and MongoDB with AI-driven resume and portfolio pipelines used by
+            5,000+ active users. Prior internships at Protechmind and Narrato shipped AI automation and NLP pipelines
+            into production.
+          </p>
+          <p>
+            This submission is a complete AWS architecture for a Regional Incident Data Lake — Step Functions
+            ingestion, KMS zero-trust, Glue skew handling, and verified secret rotation, with an in-page operator
+            console so the design can be reviewed visually instead of read as raw JSON.
+          </p>
+          <div class="links-row" style="margin-top: 4px;">
+            <a class="link-chip" href="tel:+918595875456">+91 85958 75456</a>
+            <a class="link-chip" href="mailto:architjain2501@gmail.com">architjain2501@gmail.com</a>
+            <a class="link-chip" href="https://github.com/archit2501" target="_blank" rel="noreferrer">github.com/archit2501</a>
+            <a class="link-chip" href="https://linkedin.com/in/architjain01" target="_blank" rel="noreferrer">linkedin.com/in/architjain01</a>
+            <a class="link-chip" href="https://architjain.me" target="_blank" rel="noreferrer">architjain.me</a>
+          </div>
+        </div>
+
+        <!-- Experience timeline -->
+        <div class="card timeline">
+          <h3>Experience</h3>
+          <ul class="tl-list">
+            <li class="tl-item">
+              <div>
+                <h4>Full Stack Engineer</h4>
+                <span class="where">F1jobs.io · NeuraScribe Inc · Austin, TX</span>
+                <span class="when">Oct 2025 — Present</span>
+                <ul>
+                  <li>React + Node + MongoDB platform; 28% retention lift over 5,000+ users.</li>
+                  <li>AI resume pipelines with spaCy + TF-IDF, freeing 15+ hours/week across 3 HR teams.</li>
+                  <li>Next.js portfolio generators driving a 35% interview-callback increase.</li>
+                </ul>
+              </div>
+            </li>
+            <li class="tl-item">
+              <div>
+                <h4>AI Solutions Development Intern</h4>
+                <span class="where">Protechmind Solutions · Noida, India</span>
+                <span class="when">May 2025 — Aug 2025</span>
+                <ul>
+                  <li>3 production AI automations in Python + TensorFlow; 30% task-time reduction.</li>
+                  <li>Predictive analytics on 50,000+ records with Scikit-learn; 22% efficiency gain.</li>
+                </ul>
+              </div>
+            </li>
+            <li class="tl-item">
+              <div>
+                <h4>Applied Machine Learning Intern</h4>
+                <span class="where">Narrato Pvt Ltd · Remote</span>
+                <span class="when">Sep 2024 — Dec 2024</span>
+                <ul>
+                  <li>NLP modules (keyword extraction, semantic similarity) cutting manual tagging 25%.</li>
+                  <li>Data pipelines for 100,000+ documents; 35% workflow readiness improvement.</li>
+                </ul>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Credentials -->
+        <div class="card creds">
+          <h3>Education &amp; Credentials</h3>
+          <div class="group">
+            <span class="label">Education</span>
+            <span class="value"><strong>B.Tech, Computer Science</strong> — Amity University, Noida · Sep 2022 — Apr 2026</span>
+          </div>
+          <div class="group">
+            <span class="label">Achievements</span>
+            <div class="badge-row">
+              <span class="badge gold">🏆 Cyber Cup 5.0 · 1st place</span>
+              <span class="badge gold">🥉 Cyber Cup 4.0 · 3rd place</span>
+            </div>
+            <span class="value">Team Lead — 150 teams (2025) · 160 teams (2024)</span>
+          </div>
+          <div class="group">
+            <span class="label">Certifications</span>
+            <div class="badge-row">
+              <span class="badge">MCP Advanced Topics — Anthropic</span>
+              <span class="badge">AWS Cloud Essentials</span>
+              <span class="badge">Generative AI — Google</span>
+              <span class="badge">ML with Python — IBM</span>
+              <span class="badge">Cybersecurity — Cisco</span>
+              <span class="badge">Python &amp; Data Science — IIT Madras</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skills strip (wide) -->
+        <div class="card creds span-wide">
+          <h3>Technical stack</h3>
+          <div class="group">
+            <span class="label">Languages</span>
+            <div class="badge-row">
+              <span class="badge">Python</span><span class="badge">JavaScript</span><span class="badge">TypeScript</span><span class="badge">C++</span><span class="badge">SQL</span>
+            </div>
+          </div>
+          <div class="group">
+            <span class="label">Frontend</span>
+            <div class="badge-row">
+              <span class="badge">React</span><span class="badge">Next.js</span><span class="badge">Tailwind CSS</span><span class="badge">HTML5</span><span class="badge">CSS3</span><span class="badge">Streamlit</span>
+            </div>
+          </div>
+          <div class="group">
+            <span class="label">Backend</span>
+            <div class="badge-row">
+              <span class="badge">Node.js</span><span class="badge">Express</span><span class="badge">Flask</span><span class="badge">Django</span><span class="badge">REST APIs</span>
+            </div>
+          </div>
+          <div class="group">
+            <span class="label">AI / ML</span>
+            <div class="badge-row">
+              <span class="badge">TensorFlow</span><span class="badge">PyTorch</span><span class="badge">Scikit-learn</span><span class="badge">spaCy</span><span class="badge">OpenCV</span><span class="badge">NLP</span><span class="badge">AWS SageMaker</span>
+            </div>
+          </div>
+          <div class="group">
+            <span class="label">Data &amp; Cloud</span>
+            <div class="badge-row">
+              <span class="badge">MongoDB</span><span class="badge">MySQL</span><span class="badge">PostgreSQL</span><span class="badge">BigQuery</span><span class="badge">AWS</span><span class="badge">Docker</span><span class="badge">Kubernetes</span><span class="badge">Terraform</span><span class="badge">CI/CD</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────── ARCHITECTURE ───────────────────────────── -->
+  <section id="architecture" class="card">
+    <div class="card-head">
       <div>
         <h2>End-to-end architecture</h2>
-        <p>Valid data follows the green path. Tampered data follows the red quarantine path. Purple rails are security and secret lifecycle controls.</p>
+        <p>Green is the validated data path. Red is the quarantine path. The dashed rails are cross-cutting security and rotation controls.</p>
       </div>
-      <span class="chip ok">serverless, zero-trust, auditable</span>
+      <span class="pill green"><span class="dot"></span>serverless · zero-trust · auditable</span>
     </div>
-    <div class="panel-body architecture">
+    <div class="arch">
       <svg viewBox="0 0 1160 460" role="img" aria-label="Architecture diagram for the Regional Incident Data Lake">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="currentColor"/></marker>
-          <marker id="arrow-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#059669"/></marker>
-          <marker id="arrow-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#dc2626"/></marker>
+          <marker id="arrow-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#5af0c8"/></marker>
+          <marker id="arrow-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#f7768e"/></marker>
         </defs>
-        <g class="svg-node" transform="translate(28 116)"><rect width="126" height="72" rx="8"/><text x="63" y="31" text-anchor="middle">Agencies</text><text class="sub" x="63" y="52" text-anchor="middle">zip + manifest</text></g>
-        <g class="svg-node blue" transform="translate(202 116)"><rect width="142" height="72" rx="8"/><text x="71" y="31" text-anchor="middle">S3 Landing</text><text class="sub" x="71" y="52" text-anchor="middle">SSE-KMS raw</text></g>
+        <g class="svg-node" transform="translate(28 116)"><rect width="126" height="72" rx="10"/><text x="63" y="31" text-anchor="middle">Agencies</text><text class="sub" x="63" y="52" text-anchor="middle">zip + manifest</text></g>
+        <g class="svg-node blue" transform="translate(202 116)"><rect width="142" height="72" rx="10"/><text x="71" y="31" text-anchor="middle">S3 Landing</text><text class="sub" x="71" y="52" text-anchor="middle">SSE-KMS raw</text></g>
         <g class="svg-node amber" transform="translate(410 95)"><polygon points="88 0 176 58 88 116 0 58"/><text x="88" y="52" text-anchor="middle">MD5 Check</text><text class="sub" x="88" y="72" text-anchor="middle">manifest vs file</text></g>
-        <g class="svg-node red" transform="translate(662 30)"><rect width="156" height="62" rx="8"/><text x="78" y="28" text-anchor="middle">Quarantine</text><text class="sub" x="78" y="46" text-anchor="middle">copy, tag, metadata</text></g>
-        <g class="svg-node red" transform="translate(880 30)"><rect width="156" height="62" rx="8"/><text x="78" y="28" text-anchor="middle">SNS Alert</text><text class="sub" x="78" y="46" text-anchor="middle">severity attrs</text></g>
-        <g class="svg-node green" transform="translate(662 124)"><rect width="156" height="82" rx="8"/><text x="78" y="31" text-anchor="middle">Glue Job</text><text class="sub" x="78" y="52" text-anchor="middle">round GPS 3 dp</text><text class="sub" x="78" y="68" text-anchor="middle">Parquet output</text></g>
-        <g class="svg-node green" transform="translate(880 124)"><rect width="156" height="82" rx="8"/><text x="78" y="31" text-anchor="middle">Curated S3</text><text class="sub" x="78" y="52" text-anchor="middle">region/date/hour</text></g>
-        <g class="svg-node teal" transform="translate(880 250)"><rect width="156" height="72" rx="8"/><text x="78" y="31" text-anchor="middle">Website</text><text class="sub" x="78" y="52" text-anchor="middle">heatmap + ops rail</text></g>
-        <rect class="rail" x="154" y="356" width="884" height="38" rx="8"/><text class="rail-text" x="176" y="381">KMS: Glue via service, BreakGlass via MFA. Admin override blocked by explicit deny, SCP, and audit trail.</text>
-        <rect class="rail" x="154" y="406" width="884" height="38" rx="8"/><text class="rail-text" x="176" y="431">Secrets Manager: Weather API rotation verifies AWSPENDING before AWSCURRENT moves.</text>
+        <g class="svg-node red" transform="translate(662 30)"><rect width="156" height="62" rx="10"/><text x="78" y="28" text-anchor="middle">Quarantine</text><text class="sub" x="78" y="46" text-anchor="middle">copy · tag · metadata</text></g>
+        <g class="svg-node red" transform="translate(880 30)"><rect width="156" height="62" rx="10"/><text x="78" y="28" text-anchor="middle">SNS Alert</text><text class="sub" x="78" y="46" text-anchor="middle">severity attrs</text></g>
+        <g class="svg-node green" transform="translate(662 124)"><rect width="156" height="82" rx="10"/><text x="78" y="31" text-anchor="middle">Glue Job</text><text class="sub" x="78" y="52" text-anchor="middle">round GPS 3 dp</text><text class="sub" x="78" y="68" text-anchor="middle">Parquet output</text></g>
+        <g class="svg-node green" transform="translate(880 124)"><rect width="156" height="82" rx="10"/><text x="78" y="31" text-anchor="middle">Curated S3</text><text class="sub" x="78" y="52" text-anchor="middle">region/date/hour</text></g>
+        <g class="svg-node teal" transform="translate(880 250)"><rect width="156" height="72" rx="10"/><text x="78" y="31" text-anchor="middle">Website</text><text class="sub" x="78" y="52" text-anchor="middle">heatmap + ops rail</text></g>
+        <rect class="svg-rail" x="154" y="356" width="884" height="38" rx="10"/>
+        <text class="svg-rail-text" x="176" y="381">KMS — Glue via service · BreakGlass via MFA · admin override blocked by Deny + SCP + audit</text>
+        <rect class="svg-rail" x="154" y="406" width="884" height="38" rx="10"/>
+        <text class="svg-rail-text" x="176" y="431">Secrets Manager — Weather API rotation verifies AWSPENDING before AWSCURRENT moves</text>
         <path class="svg-edge" d="M154 152H202"/><path class="svg-edge" d="M344 152H410"/>
         <path class="svg-edge bad" d="M557 128C590 84 617 61 662 61"/><path class="svg-edge bad" d="M818 61H880"/>
         <path class="svg-edge good" d="M586 152H662"/><path class="svg-edge good" d="M818 165H880"/><path class="svg-edge good" d="M958 206V250"/>
-        <text x="596" y="98" fill="#dc2626" font-size="12" font-weight="900">fail</text>
-        <text x="598" y="143" fill="#059669" font-size="12" font-weight="900">pass</text>
-        <circle class="token" r="6" fill="#2563eb"/>
+        <text x="596" y="98" fill="#f7768e" font-size="12" font-weight="900">fail</text>
+        <text x="598" y="143" fill="#5af0c8" font-size="12" font-weight="900">pass</text>
+        <circle class="token" r="6" fill="#7c8cff"/>
       </svg>
     </div>
   </section>
 
+  <!-- ───────────────────────────── ANSWERS + SOURCE VIEWER ───────────────────────────── -->
   <section id="answers" class="layout">
-    <div class="grid">
-      <section class="panel">
-        <div class="panel-head">
+    <div class="answers">
+      <div class="card">
+        <div class="card-head">
           <div>
             <h2>Each assignment ask, answered</h2>
-            <p>Click any source button to load the artifact into the viewer on this same page.</p>
+            <p>Click any source button to load the artifact into the viewer on the right.</p>
           </div>
-          <span class="chip ok">all required files present</span>
+          <span class="pill green"><span class="dot"></span>required files present</span>
         </div>
-        <div class="panel-body grid">
+        <div class="card-body" style="display: grid; gap: 14px;">
           <article class="problem">
-            <div class="problem-label"><b>P1</b><span>Orchestration</span></div>
+            <div class="problem-tag"><b>P1</b><span>Orchestration</span></div>
             <div class="problem-body">
               <h3>Automated ingestion pipeline</h3>
               <div class="cols">
                 <div class="explain"><h4>They asked for</h4><p>A serverless S3 zip workflow using Step Functions, MD5 validation, quarantine/SNS routing, extraction, Glue anonymization, and Parquet conversion.</p></div>
-                <div class="explain"><h4>What I built</h4><p>An ASL state machine with checksum validation, Choice routing, parallel quarantine operations, bounded alerts, retries with jitter, ExtractZip, and Glue startJobRun.sync.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>Poisoned files never reach analytics. Valid files are anonymized before curated storage. Operational failures alert with filterable metadata.</p></div>
+                <div class="explain"><h4>What I built</h4><p>An ASL state machine with checksum validation, Choice routing, parallel quarantine operations, retries with jitter, ExtractZip, and Glue startJobRun.sync.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>Poisoned files never reach analytics. Valid files are anonymized before curated storage. Failures alert SNS with filterable metadata.</p></div>
               </div>
-              <ul class="check-list">
-                <li><span class="tick">OK</span><span>MD5 is streamed in Lambda and compared against a manifest field validated as 32-char hex.</span></li>
-                <li><span class="tick">OK</span><span>Failed files are copied to quarantine with tags and metadata, then alert SNS.</span></li>
-                <li><span class="tick">OK</span><span>Passed files proceed to extraction and Glue anonymization with GPS precision set to 3 decimals.</span></li>
+              <ul class="checks">
+                <li><span class="tick">✓</span><span>MD5 streamed in Lambda, manifest validated as 32-char hex.</span></li>
+                <li><span class="tick">✓</span><span>Failed files copy to quarantine with tags and metadata, then alert SNS.</span></li>
+                <li><span class="tick">✓</span><span>Passed files go to Glue anonymization with GPS precision = 3.</span></li>
               </ul>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/01-ingestion-state-machine.asl.json">View ASL JSON</button>
@@ -763,18 +1091,18 @@
           </article>
 
           <article class="problem">
-            <div class="problem-label"><b>P2</b><span>Zero Trust</span></div>
+            <div class="problem-tag"><b>P2</b><span>Zero Trust</span></div>
             <div class="problem-body">
               <h3>Ghost Admin defense</h3>
               <div class="cols">
-                <div class="explain"><h4>They asked for</h4><p>A KMS key policy that lets Glue decrypt while explicitly denying everyone else, including AdministratorAccess, unless a security condition is met.</p></div>
-                <div class="explain"><h4>What I built</h4><p>A KMS policy with explicit Deny, Glue via kms:ViaService, break-glass MFA, assumed-role ARN handling, and an Organizations SCP backstop.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>AdministratorAccess cannot beat explicit Deny. A workload-account admin also cannot rewrite the key policy because the Org SCP blocks tampering.</p></div>
+                <div class="explain"><h4>They asked for</h4><p>A KMS key policy that lets Glue decrypt while explicitly denying everyone else — including AdministratorAccess — unless a security condition is met.</p></div>
+                <div class="explain"><h4>What I built</h4><p>An explicit-Deny KMS policy, Glue via kms:ViaService, MFA break-glass carve-out, assumed-role ARN handling, and an Organizations SCP backstop.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>AdministratorAccess cannot beat explicit Deny. A workload-account admin cannot rewrite the key policy because the Org SCP blocks tampering.</p></div>
               </div>
-              <ul class="check-list">
-                <li><span class="tick">OK</span><span>Glue decrypt is limited to service-context use, including S3/KMS read-path support.</span></li>
-                <li><span class="tick">OK</span><span>Break-glass access requires recent MFA and is auditable.</span></li>
-                <li><span class="tick">OK</span><span>The explanation covers SCP enforcement, root recovery, CloudTrail/EventBridge, and kill-chain controls.</span></li>
+              <ul class="checks">
+                <li><span class="tick">✓</span><span>Glue decrypt limited to service-context use, S3/KMS read path supported.</span></li>
+                <li><span class="tick">✓</span><span>Break-glass requires recent MFA and is auditable.</span></li>
+                <li><span class="tick">✓</span><span>SCP enforcement, root recovery, and kill-chain controls documented.</span></li>
               </ul>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/02-kms-key-policy.json">View KMS policy</button>
@@ -785,18 +1113,18 @@
           </article>
 
           <article class="problem">
-            <div class="problem-label"><b>P3</b><span>Scale</span></div>
+            <div class="problem-tag"><b>P3</b><span>Scale</span></div>
             <div class="problem-body">
               <h3>Glue data skew optimization</h3>
               <div class="cols">
-                <div class="explain"><h4>They asked for</h4><p>A one-page strategy for handling 10 million GPS pings for a single intersection without increasing Glue Worker Type or Max Capacity.</p></div>
-                <div class="explain"><h4>What I built</h4><p>A technical note and PySpark skeleton using AQE, two-stage salted aggregation, correct weighted centroid math, and time/region S3 partitioning.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>The hot intersection is split across many shuffle tasks before aggregation. Output partitioning avoids recreating the hot-key problem at write time.</p></div>
+                <div class="explain"><h4>They asked for</h4><p>A one-page strategy for 10 million GPS pings for a single intersection — without raising worker type or capacity.</p></div>
+                <div class="explain"><h4>What I built</h4><p>A technical note + PySpark skeleton using AQE, two-stage salted aggregation, weighted centroid math, and time/region S3 partitioning.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>The hot intersection spreads across many shuffle tasks before aggregation. Output partitioning prevents recreating the hot key at write time.</p></div>
               </div>
-              <ul class="check-list">
-                <li><span class="tick">OK</span><span>Salting spreads the hot key across 64 buckets instead of one executor.</span></li>
-                <li><span class="tick">OK</span><span>Average math uses weighted sum/count, not biased avg(avg).</span></li>
-                <li><span class="tick">OK</span><span>The note explicitly rejects bigger workers and memory-only fixes.</span></li>
+              <ul class="checks">
+                <li><span class="tick">✓</span><span>Salting spreads the hot key across 64 buckets instead of one executor.</span></li>
+                <li><span class="tick">✓</span><span>Weighted sum/count math avoids biased avg(avg).</span></li>
+                <li><span class="tick">✓</span><span>The note explicitly rejects bigger workers and memory-only fixes.</span></li>
               </ul>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/03-data-skew-tech-note.md">View tech note</button>
@@ -806,82 +1134,82 @@
           </article>
 
           <article class="problem">
-            <div class="problem-label"><b>P4</b><span>DevSecOps</span></div>
+            <div class="problem-tag"><b>P4</b><span>DevSecOps</span></div>
             <div class="problem-body">
               <h3>Secure Weather API key rotation</h3>
               <div class="cols">
-                <div class="explain"><h4>They asked for</h4><p>A Python Lambda snippet for automated Secrets Manager rotation that verifies the new key against the Weather API before deprecating the old key.</p></div>
+                <div class="explain"><h4>They asked for</h4><p>A Python Lambda snippet for Secrets Manager rotation that verifies the new key against the Weather API before deprecating the old key.</p></div>
                 <div class="explain"><h4>What I built</h4><p>A complete four-step rotation Lambda with createSecret, setSecret, testSecret, and finishSecret. Error bodies are redacted to avoid leaking keys.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>AWSCURRENT only moves in finishSecret after testSecret successfully calls the API with AWSPENDING. Failure leaves the old key live.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>AWSCURRENT only moves in finishSecret after testSecret successfully calls the live API with AWSPENDING. Failure keeps the old key live.</p></div>
               </div>
-              <div class="timeline">
-                <div class="step"><b>1</b><strong>createSecret</strong><span>Issue new key and store AWSPENDING.</span></div>
+              <div class="timeline-4">
+                <div class="step"><b>1</b><strong>createSecret</strong><span>Issue new key, store AWSPENDING.</span></div>
                 <div class="step"><b>2</b><strong>setSecret</strong><span>No traffic moves. Old key still serves.</span></div>
-                <div class="step"><b>3</b><strong>testSecret</strong><span>Call Weather API with the new key.</span></div>
+                <div class="step"><b>3</b><strong>testSecret</strong><span>Call Weather API with new key.</span></div>
                 <div class="step"><b>4</b><strong>finishSecret</strong><span>Promote only after test passes.</span></div>
               </div>
               <div class="artifact-row">
                 <button class="artifact-button" data-file="deliverables/04-rotate-weather-api-key.py">View rotation Lambda</button>
-                <button class="artifact-button" data-file="screenshots/06-rotation-smoke-output.txt">View rotation smoke output</button>
+                <button class="artifact-button" data-file="screenshots/06-rotation-smoke-output.txt">View smoke output</button>
               </div>
             </div>
           </article>
         </div>
-      </section>
+      </div>
     </div>
 
-    <aside id="source" class="panel source-viewer">
-      <div class="panel-head">
+    <aside id="source" class="card source-card">
+      <div class="card-head">
         <div>
           <h3>In-page source viewer</h3>
-          <p>No download. No raw navigation. Click any source button to inspect the artifact here.</p>
+          <p>Every artifact loads here. No downloads, no leaving the site.</p>
         </div>
       </div>
-      <div class="panel-body" style="padding-bottom: 0;">
-        <div class="viewer-toolbar">
-          <span class="chip ok">loaded inside website</span>
-          <span id="viewerPath" class="viewer-path">deliverables/01-ingestion-state-machine.asl.json</span>
-        </div>
+      <div class="viewer-toolbar">
+        <span class="pill green"><span class="dot"></span>loaded inside website</span>
+        <span id="viewerPath" class="viewer-path">deliverables/01-ingestion-state-machine.asl.json</span>
       </div>
-      <pre id="viewer" class="codebox">Loading artifact...</pre>
+      <pre id="viewer" class="codebox">Loading artifact…</pre>
     </aside>
   </section>
 
-  <section id="console" class="panel">
-    <div class="panel-head">
+  <!-- ───────────────────────────── CONSOLE ───────────────────────────── -->
+  <section id="console" class="card">
+    <div class="card-head">
       <div>
         <h2>Frontend application layer</h2>
-        <p>The public-safety heatmap and operator observability rail are embedded below so the reviewer stays inside the website.</p>
+        <p>The public-safety heatmap and operator observability rail are embedded so the reviewer never has to leave the website.</p>
       </div>
-      <span class="chip warn">bonus application UX</span>
+      <span class="pill amber"><span class="dot"></span>bonus application UX</span>
     </div>
-    <div class="panel-body grid two">
-      <div class="grid">
-        <div class="explain"><h4>Stakeholder view</h4><p>Shows anonymized incident intensity as a heatmap. The displayed points reflect the assignment requirement to round GPS coordinates to 3 decimal places before use.</p></div>
-        <div class="explain"><h4>Operator view</h4><p>Adds Step Functions status, quarantine alerts, Glue skew monitoring, secret-rotation state, and KMS/CloudTrail audit events.</p></div>
-        <div class="explain"><h4>Production wiring</h4><p>The console is designed for S3 + CloudFront, Cognito/Identity Center, and read-only API Gateway/Lambda access over Athena, Step Functions, CloudWatch, Secrets Manager DescribeSecret, and CloudTrail Lake.</p></div>
+    <div class="card-body console-grid">
+      <div style="display: grid; gap: 12px;">
+        <div class="explain"><h4>Stakeholder view</h4><p>Anonymized incident intensity heatmap. Points are pre-rounded to 3 decimal places, matching the Glue anonymization requirement.</p></div>
+        <div class="explain"><h4>Operator view</h4><p>Adds Step Functions status, quarantine alerts, Glue skew monitor, rotation state, and KMS / CloudTrail audit events.</p></div>
+        <div class="explain"><h4>Production wiring</h4><p>S3 + CloudFront, Cognito federated to IAM Identity Center, read-only API Gateway / Lambda over Athena, Step Functions <code>ListExecutions</code>, CloudWatch, Secrets Manager <code>DescribeSecret</code>, and CloudTrail Lake.</p></div>
       </div>
-      <iframe class="console-frame" title="Embedded operator console" src="deliverables/05-operator-console.html"></iframe>
+      <iframe class="console-frame" title="Embedded operator console" src="deliverables/05-operator-console.html" loading="lazy"></iframe>
     </div>
   </section>
 
-  <section id="evidence" class="panel">
-    <div class="panel-head">
+  <!-- ───────────────────────────── EVIDENCE ───────────────────────────── -->
+  <section id="evidence" class="card">
+    <div class="card-head">
       <div>
-        <h2>Evidence and local validation</h2>
-        <p>Validation outputs and screenshots are visible here. The text logs also open in the in-page viewer.</p>
+        <h2>Evidence &amp; local validation</h2>
+        <p>Validation outputs and screenshots live here. The text logs also open in the in-page viewer.</p>
       </div>
-      <span class="chip ok">verified locally</span>
+      <span class="pill green"><span class="dot"></span>verified locally</span>
     </div>
-    <div class="panel-body grid">
-      <div class="gallery">
+    <div class="card-body" style="display: grid; gap: 14px;">
+      <div class="evidence-grid">
         <figure class="shot">
           <img src="screenshots/08-full-website-home.png" alt="Full website homepage screenshot" />
-          <figcaption>Full website homepage running locally.</figcaption>
+          <figcaption>Full website running locally.</figcaption>
         </figure>
         <figure class="shot">
           <img src="screenshots/04-operator-console-viewport.png" alt="Operator console screenshot" />
-          <figcaption>Operator console with heatmap and operational panels.</figcaption>
+          <figcaption>Operator console with heatmap and ops panels.</figcaption>
         </figure>
         <figure class="shot">
           <img src="screenshots/07-reviewer-visual.png" alt="Reviewer dashboard screenshot" />
@@ -890,35 +1218,49 @@
       </div>
       <div class="artifact-row">
         <button class="artifact-button" data-file="screenshots/00-validation.txt">View validation output</button>
-        <button class="artifact-button" data-file="screenshots/05-lambda-smoke-output.txt">View checksum smoke output</button>
-        <button class="artifact-button" data-file="screenshots/06-rotation-smoke-output.txt">View rotation smoke output</button>
+        <button class="artifact-button" data-file="screenshots/05-lambda-smoke-output.txt">View checksum smoke</button>
+        <button class="artifact-button" data-file="screenshots/06-rotation-smoke-output.txt">View rotation smoke</button>
         <button class="artifact-button" data-file="README.md">View README</button>
         <button class="artifact-button" data-file="DEPLOYMENT.md">View deployment note</button>
       </div>
     </div>
   </section>
 
-  <section id="deploy" class="panel">
-    <div class="panel-head">
+  <!-- ───────────────────────────── DEPLOY ───────────────────────────── -->
+  <section id="deploy" class="card">
+    <div class="card-head">
       <div>
-        <h2>GitHub Pages deployment</h2>
-        <p>The repository is a static site. GitHub Pages can serve it directly from the root of the main branch.</p>
+        <h2>Deployment</h2>
+        <p>Static repository served by GitHub Pages from the <code>main</code> branch root.</p>
       </div>
-      <span class="chip ok">index.html at root</span>
+      <span class="pill"><span class="dot"></span>index.html at repo root</span>
     </div>
-    <div class="panel-body grid two">
+    <div class="card-body deploy-grid">
       <div class="explain">
-        <h4>How to deploy</h4>
-        <p>Push the repository to GitHub, then set Settings -&gt; Pages -&gt; Deploy from a branch -&gt; main / root. GitHub Pages serves this `index.html` as the homepage.</p>
+        <h4>Deploy to GitHub Pages</h4>
+        <p>Push to GitHub, then set <code>Settings → Pages → Deploy from a branch → main / root</code>. The repository ships with <code>.nojekyll</code> so every file is served as-is.</p>
       </div>
       <div class="explain">
-        <h4>How to run locally</h4>
-        <p>Run `python3 -m http.server 8088 --bind 127.0.0.1`, then open `http://127.0.0.1:8088/`. The current local server is already serving this site.</p>
+        <h4>Run locally</h4>
+        <pre class="codeblock">python3 -m http.server 8088 --bind 127.0.0.1
+# then open
+http://127.0.0.1:8088/</pre>
       </div>
     </div>
   </section>
 
-  <p class="footer">Regional Incident Data Lake assignment website. Everything is reviewable inside the site.</p>
+  <!-- ───────────────────────────── FOOTER ───────────────────────────── -->
+  <footer class="footer">
+    <div>
+      Designed and built by <strong style="color: var(--ink)">Archit Jain</strong> · Regional Incident Data Lake submission.
+    </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <a href="mailto:architjain2501@gmail.com">architjain2501@gmail.com</a>
+      <a href="https://github.com/archit2501" target="_blank" rel="noreferrer">github.com/archit2501</a>
+      <a href="https://linkedin.com/in/architjain01" target="_blank" rel="noreferrer">linkedin.com/in/architjain01</a>
+      <a href="https://architjain.me" target="_blank" rel="noreferrer">architjain.me</a>
+    </div>
+  </footer>
 </main>
 
 <script>
@@ -928,7 +1270,7 @@
 
   async function loadArtifact(path, options = {}) {
     viewerPath.textContent = path;
-    viewer.textContent = "Loading " + path + "...";
+    viewer.textContent = "Loading " + path + "…";
     if (options.scroll !== false) {
       document.getElementById("source").scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -940,7 +1282,7 @@
       }
       viewer.textContent = cache.get(path);
     } catch (error) {
-      viewer.textContent = "Could not load " + path + ". Run the site through a local server or GitHub Pages. Error: " + error.message;
+      viewer.textContent = "Could not load " + path + ".\n\nServe the site via http (python3 -m http.server) or GitHub Pages.\nError: " + error.message;
     }
   }
 
