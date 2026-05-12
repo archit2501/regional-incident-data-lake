@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Incident Data Lake — Operator Console</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class' };</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; }
+  #map { height: 100%; min-height: 480px; border-radius: 0.75rem; }
+  .leaflet-container { background: transparent; }
+  .dark .leaflet-tile { filter: hue-rotate(180deg) invert(0.92) brightness(0.95) contrast(0.95); }
+  .dark .leaflet-control-attribution { background: rgba(15,23,42,0.85) !important; color: #cbd5e1 !important; }
+  .dark .leaflet-control-attribution a { color: #93c5fd !important; }
+  .skel { background: linear-gradient(90deg, transparent, rgba(148,163,184,0.18), transparent); background-size: 200% 100%; animation: skel 1.4s infinite; }
+  @keyframes skel { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  .pulse-dot { animation: pulseDot 1.6s infinite; }
+  @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .ring-focus:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+  details summary { list-style: none; cursor: pointer; user-select: none; }
+  details summary::-webkit-details-marker { display: none; }
+  .chev { transition: transform .15s ease; }
+  details[open] > summary .chev { transform: rotate(90deg); }
+  .toast-enter { animation: toastIn .22s ease-out; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  kbd { font: 600 10px ui-monospace, SFMono-Regular, monospace; background: #e2e8f0; padding: 2px 5px; border-radius: 4px; border-bottom: 1px solid #94a3b8; color: #334155; }
+  .dark kbd { background: #1e293b; color: #cbd5e1; border-bottom-color: #475569; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+
+<!-- ============== HEADER ============== -->
+<header class="sticky top-0 z-30 backdrop-blur bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
+  <div class="px-4 py-2.5 flex flex-wrap items-center gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/40 grid place-items-center text-indigo-500">
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2C7.6 6 5 9 5 13a7 7 0 0014 0c0-4-2.6-7-7-11z"/></svg>
+      </div>
+      <div>
+        <h1 class="text-sm font-semibold leading-tight">Regional Incident Data Lake</h1>
+        <p class="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight">Operator Console · prod / us-east-1</p>
+      </div>
+    </div>
+
+    <!-- live status -->
+    <div class="flex items-center gap-1.5 ml-2 pl-3 border-l border-slate-200 dark:border-slate-800">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+      <span id="live-status" class="text-[11px] text-slate-600 dark:text-slate-300">live · updated <span id="last-refresh">just now</span></span>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <!-- role switcher -->
+    <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-md p-0.5 text-[11px]">
+      <button data-role="stakeholder" class="role-btn px-2.5 py-1 rounded text-slate-700 dark:text-slate-200">Stakeholder</button>
+      <button data-role="operator" class="role-btn px-2.5 py-1 rounded text-slate-700 dark:text-slate-200">Operator</button>
+    </div>
+
+    <!-- date filter -->
+    <div class="flex items-center gap-1 text-[11px]">
+      <label for="date-filter" class="text-slate-500 dark:text-slate-400">window</label>
+      <select id="date-filter" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-1.5 py-1 ring-focus">
+        <option value="1h">last 1h</option>
+        <option value="24h" selected>last 24h</option>
+        <option value="7d">last 7d</option>
+        <option value="30d">last 30d</option>
+      </select>
+    </div>
+
+    <button id="refresh-btn" title="Refresh (R)" aria-label="Refresh" class="ring-focus px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1">
+      <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.6-6.3L21 8"/><path d="M21 3v5h-5"/></svg>
+      Refresh
+    </button>
+    <button id="dark-btn" title="Toggle theme (D)" aria-label="Toggle theme" class="ring-focus px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓</button>
+    <button id="help-btn" title="Help (?)" aria-label="Keyboard help" class="ring-focus px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">?</button>
+  </div>
+</header>
+
+<main class="px-4 py-4 space-y-4">
+
+  <!-- ============== KPI ROW ============== -->
+  <section aria-label="Key metrics" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <article class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5">
+      <div class="flex items-center justify-between">
+        <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Files ingested · 24h</div>
+        <span class="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">+8.3%</span>
+      </div>
+      <div class="mt-1.5 flex items-baseline gap-1">
+        <span class="text-2xl font-semibold" data-kpi="ingested">247</span>
+        <span class="text-[11px] text-slate-500">files</span>
+      </div>
+      <svg viewBox="0 0 100 24" class="w-full h-5 mt-1.5" preserveAspectRatio="none">
+        <polyline points="0,18 8,16 16,17 24,14 32,15 40,12 48,13 56,10 64,12 72,8 80,9 88,6 96,7 100,5"
+                  fill="none" stroke="#10b981" stroke-width="1.5"/>
+      </svg>
+    </article>
+    <article class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5">
+      <div class="flex items-center justify-between">
+        <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Quarantine rate</div>
+        <span class="text-[10px] font-mono text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60 px-1.5 py-0.5 rounded">+0.4 pp</span>
+      </div>
+      <div class="mt-1.5 flex items-baseline gap-1">
+        <span class="text-2xl font-semibold" data-kpi="quar">2.4%</span>
+        <span class="text-[11px] text-slate-500">(6 of 247)</span>
+      </div>
+      <svg viewBox="0 0 100 24" class="w-full h-5 mt-1.5" preserveAspectRatio="none">
+        <polyline points="0,20 14,18 28,19 42,15 56,17 70,12 84,14 100,10"
+                  fill="none" stroke="#ef4444" stroke-width="1.5"/>
+      </svg>
+    </article>
+    <article class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5">
+      <div class="flex items-center justify-between">
+        <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Glue runs</div>
+        <span class="text-[10px] font-mono text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded inline-flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500 pulse-dot"></span>running</span>
+      </div>
+      <div class="mt-1.5 flex items-baseline gap-1">
+        <span class="text-2xl font-semibold" data-kpi="glue">1</span>
+        <span class="text-[11px] text-slate-500">/ avg 12 min</span>
+      </div>
+      <div class="mt-1.5 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div class="h-full bg-indigo-500" style="width: 63%"></div>
+      </div>
+    </article>
+    <article class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5">
+      <div class="flex items-center justify-between">
+        <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Open alerts</div>
+        <span class="text-[10px] font-mono text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded">attention</span>
+      </div>
+      <div class="mt-1.5 flex items-baseline gap-1">
+        <span class="text-2xl font-semibold" data-kpi="alerts">2</span>
+        <span class="text-[11px] text-slate-500">unresolved</span>
+      </div>
+      <div class="mt-1 text-[10.5px] text-slate-500 dark:text-slate-400">last: <span class="font-mono">md5_mismatch</span> · 14m ago</div>
+    </article>
+  </section>
+
+  <!-- ============== MAP + OPS RAIL ============== -->
+  <section class="grid lg:grid-cols-3 gap-4">
+
+    <!-- HEATMAP (stakeholder primary) -->
+    <div class="lg:col-span-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden" data-view="stakeholder">
+      <div class="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-3">
+        <h2 class="text-sm font-semibold">Public safety heatmap</h2>
+        <span class="text-[11px] text-slate-500 dark:text-slate-400">Bangalore metro · anonymized GPS (3 dp)</span>
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-1 text-[11px]">
+          <span class="text-slate-500 dark:text-slate-400">layers</span>
+          <button class="layer-btn px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" data-layer="collision" aria-pressed="true">collisions</button>
+          <button class="layer-btn px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" data-layer="congestion" aria-pressed="true">congestion</button>
+          <button class="layer-btn px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" data-layer="hazard" aria-pressed="true">hazards</button>
+        </div>
+      </div>
+      <div class="relative" style="height: 540px;">
+        <div id="map"></div>
+        <!-- Legend -->
+        <div class="absolute bottom-3 left-3 z-[400] bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-[11px] shadow-md">
+          <div class="font-semibold mb-1.5">Intensity</div>
+          <div class="flex items-center gap-2">
+            <div class="w-24 h-2 rounded" style="background: linear-gradient(90deg, #1e3a8a, #3b82f6, #10b981, #f59e0b, #ef4444)"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>low</span><span>high</span></div>
+          <div class="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-500">data: curated/heatmap · last refresh 14:08 IST</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPS RAIL (operator role) -->
+    <aside class="space-y-3" data-view="operator">
+
+      <!-- Pipeline status -->
+      <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <summary class="px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+          <span class="chev text-slate-400">▶</span>
+          <h3 class="text-sm font-semibold flex-1">Ingestion pipeline</h3>
+          <span class="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">last 10</span>
+        </summary>
+        <div id="pipeline-list" class="p-2 space-y-1 max-h-[260px] overflow-auto text-[11.5px]"></div>
+      </details>
+
+      <!-- Skew monitor -->
+      <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <summary class="px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+          <span class="chev text-slate-400">▶</span>
+          <h3 class="text-sm font-semibold flex-1">Glue partition skew</h3>
+          <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded text-[10px] p-0.5">
+            <button id="skew-before" class="skew-toggle px-1.5 py-0.5 rounded">before</button>
+            <button id="skew-after" class="skew-toggle px-1.5 py-0.5 rounded">after</button>
+          </div>
+        </summary>
+        <div class="p-3 space-y-2">
+          <div id="skew-chart" class="flex items-end gap-0.5 h-24 border-b border-slate-200 dark:border-slate-700 transition-all"></div>
+          <div class="flex justify-between text-[10px] text-slate-500"><span>partitions →</span><span id="skew-summary">peak: 10 M · 1 hot</span></div>
+          <div class="text-[10.5px] text-slate-600 dark:text-slate-300 leading-relaxed">
+            <span class="font-semibold">Hot key:</span> <code>intersection_id = silk-board-jct</code> · 10 M pings / 24h.
+            Toggle <em>after</em> to see the salted aggregator (64 buckets) result.
+          </div>
+        </div>
+      </details>
+
+      <!-- Rotation status -->
+      <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <summary class="px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+          <span class="chev text-slate-400">▶</span>
+          <h3 class="text-sm font-semibold flex-1">Weather API key rotation</h3>
+          <span class="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">healthy</span>
+        </summary>
+        <div class="p-3 grid grid-cols-2 gap-3 text-[11.5px]">
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">AWSCURRENT</div>
+            <div class="font-mono mt-0.5"><span id="rot-current">v2.1</span></div>
+            <div class="text-[10px] text-slate-500" id="rot-age">issued 4d 02h ago</div>
+          </div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400">AWSPENDING</div>
+            <div class="font-mono mt-0.5"><span id="rot-pending" class="text-slate-400">—</span></div>
+            <div class="text-[10px] text-slate-500" id="rot-pending-state">not in rotation</div>
+          </div>
+          <div class="col-span-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Next rotation</div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-[11.5px]" id="rot-next">2026-08-10 03:00 UTC</span>
+              <div class="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full bg-emerald-500" id="rot-bar" style="width: 7%"></div>
+              </div>
+              <span class="text-[10px] text-slate-500" id="rot-cd">in 89 d</span>
+            </div>
+          </div>
+          <div class="col-span-2 text-[10.5px] text-slate-600 dark:text-slate-300">
+            Last successful <code>testSecret</code>: <span id="rot-last-test">2026-05-08 03:00 UTC</span> · 200 ✓
+          </div>
+        </div>
+      </details>
+
+      <!-- Audit log -->
+      <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <summary class="px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+          <span class="chev text-slate-400">▶</span>
+          <h3 class="text-sm font-semibold flex-1">KMS &amp; access audit</h3>
+          <select id="audit-filter" class="text-[10px] bg-slate-100 dark:bg-slate-800 border-0 rounded px-1.5 py-0.5 ring-focus">
+            <option value="all">all events</option>
+            <option value="kms:Decrypt">kms:Decrypt</option>
+            <option value="sts:AssumeRole">break-glass</option>
+            <option value="kms:PutKeyPolicy">policy edits</option>
+          </select>
+        </summary>
+        <div id="audit-list" class="p-1.5 space-y-0.5 max-h-[260px] overflow-auto text-[11px] font-mono"></div>
+      </details>
+
+    </aside>
+  </section>
+
+  <!-- ============== INTEGRATION NOTE ============== -->
+  <details class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <summary class="px-4 py-2.5 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+      <span class="chev text-slate-400">▶</span>
+      <h3 class="text-sm font-semibold flex-1">How this console plugs into AWS</h3>
+      <span class="text-[10px] text-slate-500">production data sources</span>
+    </summary>
+    <div class="p-4 text-[12px] text-slate-600 dark:text-slate-300 space-y-3 leading-relaxed">
+
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+          <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Heatmap data</div>
+          <div>Reads aggregated Parquet from <code>s3://incident-curated-prod/curated/_heatmap/</code> via <strong>Athena</strong>, surfaced through an API Gateway HTTP API + Lambda that returns GeoJSON. The Lambda role has <code>s3:GetObject</code> on the curated bucket only and <strong>no <code>kms:Decrypt</code></strong> — the heatmap is pre-aggregated and anonymized to 3 dp, so the raw KMS-encrypted Parquet stays sealed.</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+          <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Pipeline status</div>
+          <div><strong>Step Functions <code>ListExecutions</code></strong> on <code>arn:…:stateMachine:IngestionStateMachine</code>, paged through Lambda. Per-execution detail comes from <code>GetExecutionHistory</code> on click. Live status uses EventBridge → WebSocket API for push updates.</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+          <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Skew monitor</div>
+          <div>Glue job emits Spark metrics to CloudWatch <code>EMRServerless/Spark</code> namespace; we GET <code>GetMetricData</code> for partition size histograms. The "after" view comes from the salted aggregator's per-bucket counts emitted as custom Glue metrics.</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+          <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Rotation status</div>
+          <div><code>secretsmanager:DescribeSecret</code> on the Weather API key secret — exposes <code>VersionIdsToStages</code>, <code>NextRotationDate</code>, <code>LastRotatedDate</code>. We never call <code>GetSecretValue</code> from the console.</div>
+        </div>
+        <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3 sm:col-span-2">
+          <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Audit log</div>
+          <div><strong>CloudTrail Lake</strong> federated query for events on the KMS key ARN and the Break-Glass role ARN. Console runs read-only queries through a service Lambda with <code>cloudtrail:StartQuery</code> and <code>cloudtrail:GetQueryResults</code>. Results are cached for 60s.</div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3">
+        <div class="text-[10.5px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Hosting &amp; auth</div>
+        <div>Static HTML/JS served from <strong>S3 + CloudFront</strong> with OAC. Sign-in via <strong>Cognito federated to IAM Identity Center</strong> (no shared credentials). The console's API Lambda assumes a read-only role <code>arn:aws:iam::123456789012:role/ConsoleReader</code> — no <code>kms:Decrypt</code>, no <code>secretsmanager:GetSecretValue</code>, no <code>s3:PutObject</code>. Even with full UI compromise, an attacker gets the same view a stakeholder gets.</div>
+      </div>
+
+      <div class="text-[11px] text-slate-500 italic">The data shown on this page is seeded for review. Each panel above lists the exact AWS API it would call in production.</div>
+    </div>
+  </details>
+
+</main>
+
+<!-- ============== FOOTER ============== -->
+<footer class="px-4 py-3 border-t border-slate-200 dark:border-slate-800 mt-2 text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3">
+  <span>env <span class="font-mono text-slate-700 dark:text-slate-200">prod / us-east-1</span></span>
+  <span>·</span>
+  <span>data freshness <span id="data-fresh" class="font-mono">8s</span></span>
+  <span>·</span>
+  <span class="hidden sm:inline">shortcuts <kbd>D</kbd> dark · <kbd>R</kbd> refresh · <kbd>?</kbd> help</span>
+  <span class="flex-1"></span>
+  <span>build <span class="font-mono">d4ea0c9</span></span>
+</footer>
+
+<!-- ============== TOASTS ============== -->
+<div id="toast-region" aria-live="polite" class="fixed bottom-4 right-4 z-[1000] space-y-2 pointer-events-none"></div>
+
+<!-- ============== HELP MODAL ============== -->
+<div id="help-modal" class="hidden fixed inset-0 z-[999] bg-slate-950/60 backdrop-blur-sm grid place-items-center p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-5 space-y-3">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold">Keyboard shortcuts</h3>
+      <button id="help-close" class="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-lg leading-none">×</button>
+    </div>
+    <table class="text-[12px] w-full">
+      <tbody class="[&_tr]:border-t [&_tr]:border-slate-100 dark:[&_tr]:border-slate-800/60 [&_td]:py-1.5 [&_td]:pr-3">
+        <tr><td><kbd>D</kbd></td><td>toggle dark mode</td></tr>
+        <tr><td><kbd>R</kbd></td><td>refresh data</td></tr>
+        <tr><td><kbd>1</kbd> / <kbd>2</kbd></td><td>switch role (Stakeholder / Operator)</td></tr>
+        <tr><td><kbd>/</kbd></td><td>focus audit filter</td></tr>
+        <tr><td><kbd>?</kbd></td><td>this help</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>close dialog</td></tr>
+      </tbody>
+    </table>
+    <p class="text-[11px] text-slate-500 dark:text-slate-400">Pre-seeded review build. In production, every panel calls the AWS APIs documented in <em>How this console plugs into AWS</em>.</p>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SEED DATA — production calls listed in the "How this plugs into AWS" section
+// ============================================================
+
+// 1. Heatmap incidents — Athena query result against curated/_heatmap/
+const HOTSPOTS = [
+  { name: 'Silk Board jct',     lat: 12.917, lon: 77.622, hot: true,  base: 220 },
+  { name: 'Marathahalli bridge',lat: 12.956, lon: 77.701, hot: false, base: 110 },
+  { name: 'Hebbal flyover',     lat: 13.036, lon: 77.597, hot: false, base: 145 },
+  { name: 'Whitefield rd',      lat: 12.969, lon: 77.749, hot: false, base: 95  },
+  { name: 'KR Puram bridge',    lat: 13.008, lon: 77.701, hot: false, base: 105 },
+  { name: 'Electronic City',    lat: 12.844, lon: 77.677, hot: false, base: 80  },
+  { name: 'Trinity Circle',     lat: 12.973, lon: 77.620, hot: false, base: 90  },
+  { name: 'Yeshwanthpur',       lat: 13.029, lon: 77.553, hot: false, base: 70  },
+  { name: 'Banashankari',       lat: 12.926, lon: 77.546, hot: false, base: 75  },
+  { name: 'Indiranagar',        lat: 12.978, lon: 77.640, hot: false, base: 95  },
+  { name: 'JP Nagar',           lat: 12.911, lon: 77.585, hot: false, base: 65  },
+  { name: 'Sarjapur Rd',        lat: 12.901, lon: 77.687, hot: false, base: 100 },
+];
+
+// generate ~340 anonymized (3dp) incident points clustered around hotspots
+function buildIncidents() {
+  const types = ['collision', 'congestion', 'hazard'];
+  const out = [];
+  HOTSPOTS.forEach(h => {
+    const count = h.hot ? 90 : Math.round(h.base / 6);
+    for (let i = 0; i < count; i++) {
+      const jitter = h.hot ? 0.004 : 0.008;
+      const lat = +(h.lat + (Math.random() - 0.5) * jitter * 2).toFixed(3);
+      const lon = +(h.lon + (Math.random() - 0.5) * jitter * 2).toFixed(3);
+      const type = types[Math.floor(Math.random() * types.length)];
+      const intensity = h.hot ? 0.7 + Math.random() * 0.3 : 0.2 + Math.random() * 0.5;
+      out.push({ lat, lon, type, intensity, hotspot: h.name });
+    }
+  });
+  return out;
+}
+const INCIDENTS = buildIncidents();
+
+// 2. Recent state machine executions — Step Functions ListExecutions
+const PIPELINE_RUNS = [
+  { id: 'exec-9f3a', state: 'SUCCEEDED',  file: 'agency-a/feed-2031.zip', dur: '8m 14s', ts: '14:08 IST' },
+  { id: 'exec-9f39', state: 'SUCCEEDED',  file: 'agency-b/feed-2030.zip', dur: '11m 02s', ts: '13:54 IST' },
+  { id: 'exec-9f38', state: 'QUARANTINED',file: 'agency-c/feed-042.zip',  dur: '23s',     ts: '13:54 IST', reason: 'md5 mismatch' },
+  { id: 'exec-9f37', state: 'SUCCEEDED',  file: 'agency-a/feed-2029.zip', dur: '7m 49s',  ts: '13:41 IST' },
+  { id: 'exec-9f36', state: 'RUNNING',    file: 'agency-d/feed-0114.zip', dur: '4m 31s',  ts: '13:38 IST' },
+  { id: 'exec-9f35', state: 'SUCCEEDED',  file: 'agency-b/feed-2028.zip', dur: '9m 18s',  ts: '13:22 IST' },
+  { id: 'exec-9f34', state: 'FAILED',     file: 'agency-a/feed-2027.zip', dur: '2m 03s',  ts: '13:09 IST', reason: 'Glue OOM (pre-fix)' },
+  { id: 'exec-9f33', state: 'SUCCEEDED',  file: 'agency-c/feed-041.zip',  dur: '8m 57s',  ts: '12:55 IST' },
+  { id: 'exec-9f32', state: 'SUCCEEDED',  file: 'agency-a/feed-2026.zip', dur: '7m 12s',  ts: '12:43 IST' },
+  { id: 'exec-9f31', state: 'QUARANTINED',file: 'agency-d/feed-0113.zip', dur: '19s',     ts: '12:30 IST', reason: 'md5 mismatch' },
+];
+
+const STATE_STYLES = {
+  SUCCEEDED:   { dot: 'bg-emerald-500',     pill: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60' },
+  RUNNING:     { dot: 'bg-indigo-500 pulse-dot', pill: 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60' },
+  QUARANTINED: { dot: 'bg-amber-500',       pill: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60' },
+  FAILED:      { dot: 'bg-red-500',         pill: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/60' },
+};
+
+// 3. Skew distribution — Spark partition byte sizes (MB)
+const SKEW_BEFORE = [42, 38, 51, 1280, 47, 49, 41, 55, 39, 44, 53, 42, 46, 50, 38, 47];
+const SKEW_AFTER  = [82, 91, 78, 95, 86, 90, 88, 94, 81, 87, 92, 84, 89, 93, 80, 85];
+
+// 4. Audit log — CloudTrail Lake query result for KMS key + Break-Glass role
+const AUDIT = [
+  { ts: '14:08:11', actor: 'GlueIngestionRole',     event: 'kms:Decrypt',     ok: true,  ctx: 'project=incident-data-lake' },
+  { ts: '14:07:58', actor: 'GlueIngestionRole',     event: 'kms:GenerateDataKey', ok: true, ctx: 'via=glue.us-east-1' },
+  { ts: '13:55:02', actor: 'BreakGlassDataAccess',  event: 'sts:AssumeRole',  ok: true,  ctx: 'mfa=present age=124s', alert: true },
+  { ts: '13:55:14', actor: 'BreakGlassDataAccess',  event: 'kms:Decrypt',     ok: true,  ctx: 'investigating quarantine 9f38', alert: true },
+  { ts: '13:54:12', actor: 'GlueIngestionRole',     event: 'kms:Decrypt',     ok: true,  ctx: 'project=incident-data-lake' },
+  { ts: '13:41:33', actor: 'GlueIngestionRole',     event: 'kms:Decrypt',     ok: true,  ctx: 'project=incident-data-lake' },
+  { ts: '13:22:01', actor: 'GlueIngestionRole',     event: 'kms:Decrypt',     ok: true,  ctx: 'project=incident-data-lake' },
+  { ts: '12:18:44', actor: 'LeadAdmin (denied)',    event: 'kms:Decrypt',     ok: false, ctx: 'AccessDenied · L1 explicit Deny', alert: true },
+  { ts: '11:02:09', actor: 'KmsKeyAdmin',           event: 'kms:GetKeyPolicy', ok: true, ctx: 'monthly review' },
+  { ts: '09:45:30', actor: 'GlueIngestionRole',     event: 'kms:Decrypt',     ok: true,  ctx: 'project=incident-data-lake' },
+  { ts: '08:14:02', actor: 'WeatherRotationLambda', event: 'kms:Decrypt',     ok: true,  ctx: 'rotating admin token' },
+  { ts: '08:14:03', actor: 'WeatherRotationLambda', event: 'secretsmanager:PutSecretValue', ok: true, ctx: 'AWSPENDING v2.1' },
+];
+
+// 5. Rotation state — Secrets Manager DescribeSecret
+const ROTATION = {
+  current: 'v2.1',
+  issuedAt: '2026-05-08T03:00Z',
+  ageHuman: '4d 02h ago',
+  pending: null,
+  pendingState: 'not in rotation',
+  nextRotation: '2026-08-10 03:00 UTC',
+  countdown: 'in 89 d',
+  progressPct: 7,
+  lastTest: '2026-05-08 03:00 UTC',
+};
+
+// ============================================================
+// MAP — Leaflet heat layer
+// ============================================================
+const map = L.map('map', { zoomControl: true, attributionControl: true })
+  .setView([12.97, 77.62], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '© OpenStreetMap contributors',
+}).addTo(map);
+
+const activeLayers = new Set(['collision', 'congestion', 'hazard']);
+let heatLayer = null;
+function renderHeatmap() {
+  if (heatLayer) map.removeLayer(heatLayer);
+  const points = INCIDENTS
+    .filter(i => activeLayers.has(i.type))
+    .map(i => [i.lat, i.lon, i.intensity]);
+  heatLayer = L.heatLayer(points, {
+    radius: 24, blur: 28, maxZoom: 15,
+    gradient: { 0.1: '#1e3a8a', 0.3: '#3b82f6', 0.5: '#10b981', 0.75: '#f59e0b', 1: '#ef4444' },
+  }).addTo(map);
+}
+renderHeatmap();
+
+document.querySelectorAll('.layer-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const layer = btn.dataset.layer;
+    const on = btn.getAttribute('aria-pressed') === 'true';
+    btn.setAttribute('aria-pressed', String(!on));
+    btn.classList.toggle('bg-slate-200', on);
+    btn.classList.toggle('dark:bg-slate-700', on);
+    btn.classList.toggle('opacity-50', on);
+    if (on) activeLayers.delete(layer); else activeLayers.add(layer);
+    renderHeatmap();
+  });
+});
+
+// ============================================================
+// PIPELINE LIST
+// ============================================================
+function renderPipeline() {
+  const root = document.getElementById('pipeline-list');
+  root.innerHTML = PIPELINE_RUNS.map(r => {
+    const s = STATE_STYLES[r.state];
+    const reason = r.reason ? `<span class="text-slate-500 dark:text-slate-400 ml-1">· ${r.reason}</span>` : '';
+    return `
+      <button class="w-full text-left rounded px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2 ring-focus"
+              data-exec="${r.id}">
+        <span class="w-1.5 h-1.5 rounded-full ${s.dot}"></span>
+        <span class="font-mono text-[10.5px] text-slate-500 dark:text-slate-400">${r.ts}</span>
+        <span class="font-mono text-[11px] flex-1 truncate">${r.file}</span>
+        <span class="text-[10px] font-mono px-1.5 py-0.5 rounded ${s.pill}">${r.state}</span>
+        <span class="text-[10px] text-slate-500 dark:text-slate-400 font-mono w-12 text-right">${r.dur}</span>
+      </button>${reason ? `<div class="px-2 pb-1 text-[10px] ml-4">${reason}</div>` : ''}
+    `;
+  }).join('');
+  root.querySelectorAll('button[data-exec]').forEach(b => {
+    b.addEventListener('click', () => {
+      const run = PIPELINE_RUNS.find(r => r.id === b.dataset.exec);
+      toast(`execution <code>${run.id}</code> · ${run.state} · ${run.file}`, run.state === 'FAILED' || run.state === 'QUARANTINED' ? 'error' : 'info');
+    });
+  });
+}
+renderPipeline();
+
+// ============================================================
+// SKEW CHART
+// ============================================================
+let skewMode = 'before';
+function renderSkew() {
+  const data = skewMode === 'before' ? SKEW_BEFORE : SKEW_AFTER;
+  const max = Math.max(...data);
+  const root = document.getElementById('skew-chart');
+  root.innerHTML = data.map(v => {
+    const pct = (v / max) * 100;
+    const hot = skewMode === 'before' && v > 500;
+    const cls = hot ? 'bg-red-500' : (skewMode === 'before' ? 'bg-slate-400/60 dark:bg-slate-500/60' : 'bg-emerald-500/80');
+    const label = hot ? `<span class="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] font-bold text-red-600 dark:text-red-400 whitespace-nowrap">10M ▼</span>` : '';
+    return `<div class="flex-1 relative ${cls} rounded-t transition-all" style="height: ${pct.toFixed(1)}%">${label}</div>`;
+  }).join('');
+
+  const summary = document.getElementById('skew-summary');
+  summary.textContent = skewMode === 'before'
+    ? 'peak: 10 M rows · 1 hot partition · OOM'
+    : 'peak: ~150 K rows · 64 even partitions · runs to completion';
+
+  document.querySelectorAll('.skew-toggle').forEach(b => {
+    const active = b.id === `skew-${skewMode}`;
+    b.classList.toggle('bg-white', active);
+    b.classList.toggle('dark:bg-slate-700', active);
+    b.classList.toggle('shadow-sm', active);
+    b.classList.toggle('text-slate-900', active);
+    b.classList.toggle('dark:text-slate-100', active);
+    b.classList.toggle('text-slate-500', !active);
+  });
+}
+renderSkew();
+document.getElementById('skew-before').addEventListener('click', () => { skewMode = 'before'; renderSkew(); });
+document.getElementById('skew-after').addEventListener('click',  () => { skewMode = 'after';  renderSkew(); });
+
+// ============================================================
+// ROTATION CARD (already mostly static)
+// ============================================================
+document.getElementById('rot-current').textContent = ROTATION.current;
+document.getElementById('rot-age').textContent     = `issued ${ROTATION.ageHuman}`;
+document.getElementById('rot-next').textContent    = ROTATION.nextRotation;
+document.getElementById('rot-cd').textContent      = ROTATION.countdown;
+document.getElementById('rot-bar').style.width     = `${ROTATION.progressPct}%`;
+document.getElementById('rot-last-test').textContent = ROTATION.lastTest;
+
+// ============================================================
+// AUDIT LIST
+// ============================================================
+function renderAudit() {
+  const filter = document.getElementById('audit-filter').value;
+  const rows = AUDIT.filter(r => filter === 'all' || r.event === filter);
+  const root = document.getElementById('audit-list');
+  if (!rows.length) { root.innerHTML = `<div class="px-2 py-3 text-center text-slate-500 text-[11px] italic">no events match filter</div>`; return; }
+  root.innerHTML = rows.map(r => {
+    const okCls = r.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500';
+    const okGlyph = r.ok ? '✓' : '✗';
+    const alertCls = r.alert ? 'bg-amber-50/60 dark:bg-amber-950/30 border-l-2 border-amber-500' : '';
+    return `<div class="px-2 py-1.5 rounded ${alertCls} hover:bg-slate-50 dark:hover:bg-slate-800/50">
+      <div class="flex items-center gap-2">
+        <span class="${okCls} font-bold">${okGlyph}</span>
+        <span class="text-slate-500 dark:text-slate-400 text-[10.5px]">${r.ts}</span>
+        <span class="font-mono text-[10.5px] text-indigo-700 dark:text-indigo-300 truncate">${r.event}</span>
+      </div>
+      <div class="text-[10px] text-slate-600 dark:text-slate-300 ml-5">${r.actor} <span class="text-slate-400">·</span> ${r.ctx}</div>
+    </div>`;
+  }).join('');
+}
+renderAudit();
+document.getElementById('audit-filter').addEventListener('change', renderAudit);
+
+// ============================================================
+// ROLE SWITCHER
+// ============================================================
+function setRole(role) {
+  document.querySelectorAll('[data-view]').forEach(el => {
+    const matches = el.dataset.view === role || role === 'operator';
+    el.style.display = matches ? '' : 'none';
+  });
+  document.querySelectorAll('.role-btn').forEach(b => {
+    const active = b.dataset.role === role;
+    b.classList.toggle('bg-white', active);
+    b.classList.toggle('dark:bg-slate-700', active);
+    b.classList.toggle('shadow-sm', active);
+    b.classList.toggle('font-semibold', active);
+  });
+  localStorage.setItem('console-role', role);
+  // Operator view: in compact stakeholder mode the rail hides. Re-render map after layout shifts.
+  setTimeout(() => map.invalidateSize(), 60);
+}
+document.querySelectorAll('.role-btn').forEach(b => b.addEventListener('click', () => setRole(b.dataset.role)));
+setRole(localStorage.getItem('console-role') || 'operator');
+
+// ============================================================
+// REFRESH + LAST-REFRESH CLOCK
+// ============================================================
+let lastRefresh = Date.now();
+function refresh() {
+  lastRefresh = Date.now();
+  document.getElementById('last-refresh').textContent = 'just now';
+  toast('Data refreshed', 'info');
+}
+document.getElementById('refresh-btn').addEventListener('click', refresh);
+setInterval(() => {
+  const s = Math.round((Date.now() - lastRefresh) / 1000);
+  document.getElementById('last-refresh').textContent =
+    s < 5 ? 'just now' : s < 60 ? `${s}s ago` : `${Math.round(s/60)}m ago`;
+  document.getElementById('data-fresh').textContent = s < 60 ? `${s}s` : `${Math.round(s/60)}m`;
+}, 1000);
+
+// ============================================================
+// DARK MODE
+// ============================================================
+const DARK_KEY = 'console-dark';
+function applyDark(on) {
+  document.documentElement.classList.toggle('dark', on);
+  localStorage.setItem(DARK_KEY, on ? '1' : '0');
+}
+const savedDark = localStorage.getItem(DARK_KEY);
+applyDark(savedDark === null
+  ? window.matchMedia('(prefers-color-scheme: dark)').matches
+  : savedDark === '1');
+document.getElementById('dark-btn').addEventListener('click', () => {
+  applyDark(!document.documentElement.classList.contains('dark'));
+});
+
+// ============================================================
+// TOASTS
+// ============================================================
+function toast(html, kind = 'info') {
+  const region = document.getElementById('toast-region');
+  const tones = {
+    info:  'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900',
+    error: 'border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-950/80',
+  };
+  const el = document.createElement('div');
+  el.className = `toast-enter pointer-events-auto rounded-lg border ${tones[kind]} shadow-lg px-3 py-2 text-[12px] max-w-sm`;
+  el.innerHTML = html;
+  region.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; }, 3000);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// Surface one initial toast so users see the pattern.
+setTimeout(() => toast('Quarantine alert · agency-c/feed-042.zip (md5 mismatch)', 'error'), 1200);
+
+// ============================================================
+// HELP MODAL
+// ============================================================
+const helpModal = document.getElementById('help-modal');
+function openHelp()  { helpModal.classList.remove('hidden'); }
+function closeHelp() { helpModal.classList.add('hidden'); }
+document.getElementById('help-btn').addEventListener('click', openHelp);
+document.getElementById('help-close').addEventListener('click', closeHelp);
+helpModal.addEventListener('click', e => { if (e.target === helpModal) closeHelp(); });
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, textarea, select')) return;
+  if (e.key === 'd' || e.key === 'D') document.getElementById('dark-btn').click();
+  else if (e.key === 'r' || e.key === 'R') refresh();
+  else if (e.key === '1') setRole('stakeholder');
+  else if (e.key === '2') setRole('operator');
+  else if (e.key === '/') { e.preventDefault(); document.getElementById('audit-filter').focus(); }
+  else if (e.key === '?') openHelp();
+  else if (e.key === 'Escape') closeHelp();
+});
+
+// Initial render of the heatmap after layout settles.
+setTimeout(() => map.invalidateSize(), 100);
+</script>
+</body>
+</html>

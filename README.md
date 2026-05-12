@@ -10,10 +10,11 @@ Submission for the architecture assignment covering a serverless geospatial data
 | 2 | Ghost Admin Defense (KMS + Org SCP) | [`deliverables/02-kms-key-policy.json`](deliverables/02-kms-key-policy.json), [`deliverables/02-ghost-admin-defense.md`](deliverables/02-ghost-admin-defense.md), [`deliverables/02-scp-kms-guardrail.json`](deliverables/02-scp-kms-guardrail.json) |
 | 3 | Data Skew Optimization (PySpark / Glue) | [`deliverables/03-data-skew-tech-note.md`](deliverables/03-data-skew-tech-note.md), [`deliverables/03-glue-job-skeleton.py`](deliverables/03-glue-job-skeleton.py) |
 | 4 | Secrets Manager Rotation Lambda | [`deliverables/04-rotate-weather-api-key.py`](deliverables/04-rotate-weather-api-key.py) |
+| 5 | Operator Console (application UX layer) | [`deliverables/05-operator-console.html`](deliverables/05-operator-console.html) |
 
 ## How to review
 
-Open each artifact in the order above. The technical note and the Ghost-Admin write-up are prose; the JSON and Python files are review-ready.
+Open each artifact in the order above. The technical note and the Ghost-Admin write-up are prose; the JSON and Python files are review-ready. **Open `deliverables/05-operator-console.html` directly in a browser** — it's the application UX layer: a public-safety heatmap for government stakeholders, plus an operator rail showing pipeline status, Glue partition skew, secret rotation, and a KMS access audit.
 
 The plan that drove this submission lives at:
 - [`docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md`](docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md) — full markdown plan
