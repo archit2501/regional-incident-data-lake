@@ -2,10 +2,29 @@
 
 Submission for the architecture assignment covering a serverless geospatial data lake on AWS.
 
+## Website
+
+Open [`index.html`](index.html) first. It is the full GitHub Pages-ready website that explains every assignment requirement, the architecture, the files produced, the application frontend, and the validation evidence.
+
+Local run:
+
+```bash
+python3 -m http.server 8088 --bind 127.0.0.1
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8088/
+```
+
+GitHub Pages deployment: push this repository, then set **Settings -> Pages -> Deploy from branch -> main / root**.
+
 ## Index
 
 | # | Problem | Artifact(s) |
 |---|---------|-------------|
+| Site | Full GitHub Pages website | [`index.html`](index.html) |
 | 0 | Reviewer Visual Frontend | [`deliverables/00-reviewer-visual.html`](deliverables/00-reviewer-visual.html) |
 | 1 | Automated Ingestion Pipeline (Step Functions) | [`deliverables/01-ingestion-state-machine.asl.json`](deliverables/01-ingestion-state-machine.asl.json), [`deliverables/01-validate-checksum.py`](deliverables/01-validate-checksum.py) |
 | 2 | Ghost Admin Defense (KMS + Org SCP) | [`deliverables/02-kms-key-policy.json`](deliverables/02-kms-key-policy.json), [`deliverables/02-ghost-admin-defense.md`](deliverables/02-ghost-admin-defense.md), [`deliverables/02-scp-kms-guardrail.json`](deliverables/02-scp-kms-guardrail.json) |
