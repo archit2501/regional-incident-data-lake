@@ -4,6 +4,19 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Incident Data Lake — Operator Console</title>
+<script>
+  // Apply dark mode BEFORE first paint to prevent flash-of-light-content
+  // on dark-mode users' first load.
+  (function () {
+    try {
+      var stored = localStorage.getItem('console-dark');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (stored === '1' || (stored === null && prefersDark)) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (_e) { /* localStorage blocked: fall through */ }
+  })();
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config = { darkMode: 'class' };</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"

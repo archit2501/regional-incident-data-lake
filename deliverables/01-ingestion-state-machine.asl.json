@@ -1,5 +1,6 @@
 {
   "Comment": "Regional Incident Data Lake — Ingestion Pipeline. Triggered when a .zip lands in incident-landing-prod. Validates MD5 against the sibling .manifest.json, routes failed files to incident-quarantine-prod with an SNS alert, otherwise extracts and runs the Glue anonymize-and-parquet job (rounds GPS to 3 decimal places, writes Parquet).",
+  "TimeoutSeconds": 7200,
   "StartAt": "ValidateChecksum",
   "States": {
     "ValidateChecksum": {
@@ -28,11 +29,13 @@
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
-            "Lambda.TooManyRequestsException"
+            "Lambda.TooManyRequestsException",
+            "States.Timeout"
           ],
           "IntervalSeconds": 2,
           "MaxAttempts": 4,
-          "BackoffRate": 2.0
+          "BackoffRate": 2.0,
+          "JitterStrategy": "FULL"
         }
       ],
       "Catch": [
@@ -69,7 +72,15 @@
               "Parameters": {
                 "Bucket": "incident-quarantine-prod",
                 "Key.$": "$.key",
-                "CopySource.$": "$.validation.copySource"
+                "CopySource.$": "$.validation.copySource",
+                "MetadataDirective": "REPLACE",
+                "Metadata": {
+                  "quarantine-reason.$": "$.validation.failureReason",
+                  "expected-md5.$": "$.validation.expectedMd5",
+                  "computed-md5.$": "$.validation.computedMd5"
+                },
+                "TaggingDirective": "REPLACE",
+                "Tagging": "status=quarantined&pipeline=incident-ingest"
               },
               "ResultPath": null,
               "Next": "DeleteFromLanding"
@@ -95,7 +106,12 @@
               "Parameters": {
                 "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
                 "Subject": "Incident ingest quarantined",
-                "Message.$": "States.Format('File s3://{}/{} quarantined. Reason: {}. Expected MD5 {}, computed {}.', $.bucket, $.key, $.validation.failureReason, $.validation.expectedMd5, $.validation.computedMd5)"
+                "Message.$": "States.Format('File s3://{}/{} quarantined. Reason: {}. Expected MD5 {}, computed {}.', $.bucket, $.key, $.validation.failureReason, $.validation.expectedMd5, $.validation.computedMd5)",
+                "MessageAttributes": {
+                  "severity": { "DataType": "String", "StringValue": "warning" },
+                  "pipeline": { "DataType": "String", "StringValue": "incident-ingest" },
+                  "failureMode": { "DataType": "String", "StringValue": "quarantine" }
+                }
               },
               "End": true
             }
@@ -133,11 +149,13 @@
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
-            "Lambda.TooManyRequestsException"
+            "Lambda.TooManyRequestsException",
+            "States.Timeout"
           ],
           "IntervalSeconds": 2,
           "MaxAttempts": 4,
-          "BackoffRate": 2.0
+          "BackoffRate": 2.0,
+          "JitterStrategy": "FULL"
         }
       ],
       "Catch": [
@@ -164,12 +182,25 @@
         }
       },
       "ResultPath": "$.glue",
+      "TimeoutSeconds": 5400,
       "Retry": [
         {
           "ErrorEquals": ["Glue.ConcurrentRunsExceededException"],
           "IntervalSeconds": 30,
           "MaxAttempts": 3,
-          "BackoffRate": 2.0
+          "BackoffRate": 2.0,
+          "JitterStrategy": "FULL"
+        },
+        {
+          "ErrorEquals": [
+            "Glue.ResourceNumberLimitExceededException",
+            "Glue.InternalServiceException",
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 15,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0,
+          "JitterStrategy": "FULL"
         }
       ],
       "Catch": [
@@ -200,7 +231,12 @@
       "Parameters": {
         "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
         "Subject": "Incident ingest FAILED",
-        "Message.$": "States.Format('Ingest failed for s3://{}/{}. See Step Functions execution for full context.', $.bucket, $.key)"
+        "Message.$": "States.Format('Ingest failed for s3://{}/{}. See Step Functions execution for full context.', $.bucket, $.key)",
+        "MessageAttributes": {
+          "severity": { "DataType": "String", "StringValue": "error" },
+          "pipeline": { "DataType": "String", "StringValue": "incident-ingest" },
+          "failureMode": { "DataType": "String", "StringValue": "fatal" }
+        }
       },
       "ResultPath": "$.notification",
       "Next": "IngestionFailed"

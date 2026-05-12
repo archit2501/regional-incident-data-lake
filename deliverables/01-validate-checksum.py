@@ -103,6 +103,8 @@ def lambda_handler(event: dict[str, Any], _context: Any) -> dict[str, Any]:
     if not isinstance(expected_raw, str) or not expected_raw:
         return _fail(bucket, key, manifest_key, "manifest_missing_md5_field")
     expected = expected_raw.lower()
+    if len(expected) != 32 or any(c not in "0123456789abcdef" for c in expected):
+        return _fail(bucket, key, manifest_key, "manifest_md5_not_hex")
 
     try:
         computed, size = _stream_md5(bucket, key)

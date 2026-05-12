@@ -57,3 +57,10 @@ The Zero-Trust requirement explicitly calls out a *verifiable audit trail*. We a
 | Admin assumes Break-Glass without MFA | Key policy condition (L1) — Decrypt still denied |
 | Admin uses root account | Hardware MFA + Org SCP `DenyRootPrincipalExceptBilling` (L3) |
 | Admin assumes Break-Glass with MFA (legitimate emergency) | Allowed, paged on EventBridge, recorded in CloudTrail (L4) |
+| Admin exfiltrates a stolen Glue role session and tries `kms:Decrypt` outside the Glue service | Key policy `kms:ViaService` condition fails (L1) |
+| Admin assumes Break-Glass with stale MFA (>15 min old) | Key policy `NumericLessThan aws:MultiFactorAuthAge` denies Decrypt (L1) |
+| Admin tries `kms:ReEncryptFrom` to extract plaintext under a different key | Key policy `DenyDecryptToEveryoneElse` action list includes ReEncryptFrom (L1) |
+| Admin pivots to a different region to call `kms:Decrypt` | SCP `DenyKmsActionsOutsideApprovedRegion` denies (L2) |
+| Admin disables GuardDuty / AWS Config before tampering | SCP `DenyConfigAndGuardDutyTampering` denies (L2) |
+| Admin attempts `organizations:LeaveOrganization` to escape SCPs | SCP `DenyLeavingOrganization` denies (L2) |
+| Admin attempts `kms:*` over plain HTTP | Key policy `DenyUnencryptedTransport` denies (L1) |

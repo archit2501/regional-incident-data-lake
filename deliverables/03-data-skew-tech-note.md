@@ -27,7 +27,16 @@ AQE detects partitions whose size exceeds `5× the median` (and 256 MB absolute)
 
 Salt the group key with a uniform random 0..N-1 suffix, aggregate by `(key, salt)`, then aggregate the partial results by `key`. The salted stage parallelizes N-way; the second stage reduces only N partial rows per hot key. See `03-glue-job-skeleton.py::aggregate_salted` — 64 buckets convert one hot partition into 64 balanced ones at the cost of one extra shuffle of N rows per hot key. Cheap.
 
-**Math caveat:** for `count` / `sum` this composes trivially. For `avg` it does **not** — `avg(avg(x))` ≠ `avg(x)` when bucket sizes differ (which they do under random salting). Emit `sum` and `count` from the first stage and divide in the second:
+**Math caveat:** for `count` / `sum` this composes trivially. For `avg` it does **not** — `avg(avg(x))` ≠ `avg(x)` when bucket sizes differ (which they do under random salting).
+
+The correct reconstruction is:
+
+```
+avg_final = Σ_b(sum_x_b) / Σ_b(count_b)        ← correct, size-weighted
+         ≠  avg_b(sum_x_b / count_b)            ← wrong under random salting
+```
+
+Emit `sum` and `count` from the first stage and divide in the second:
 
 ```python
 salted = df.withColumn("_salt", (F.rand() * 64).cast("int"))
@@ -68,6 +77,7 @@ The hot intersection now spreads across roughly `400 / (regions × hours)` write
 | **Splitting input files** | The skew is in the *data*, not the file layout. Splitting input keeps all 10 M pings for the hot intersection in the same partition after the shuffle. |
 | **Pre-filtering hot keys to a side path** | Works but adds an ops branch the team has to maintain manually. The salted aggregator subsumes this without special-casing. |
 | **Larger Glue worker / more capacity** | Explicitly ruled out by the assignment. Also doesn't fix the issue — the hot partition is per-key, not per-cluster. |
+| **Bump `spark.executor.memory`** | Sneaks past the worker-type ban but is the same fix in disguise — the hot executor still serializes 10 M rows into one task. Falls over at the next 10× growth. |
 
 ## Result
 

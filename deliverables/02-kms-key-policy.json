@@ -41,7 +41,10 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "kms:ViaService":                "glue.us-east-1.amazonaws.com",
+          "kms:ViaService": [
+            "glue.us-east-1.amazonaws.com",
+            "s3.us-east-1.amazonaws.com"
+          ],
           "kms:EncryptionContext:project": "incident-data-lake"
         }
       }
@@ -64,7 +67,10 @@
       "Sid": "DenyDecryptToEveryoneElse",
       "Effect": "Deny",
       "Principal": "*",
-      "Action": "kms:Decrypt",
+      "Action": [
+        "kms:Decrypt",
+        "kms:ReEncryptFrom"
+      ],
       "Resource": "*",
       "Condition": {
         "ArnNotLike": {
@@ -120,6 +126,16 @@
             "arn:aws:iam::*:role/aws-service-role/*"
           ]
         }
+      }
+    },
+    {
+      "Sid": "DenyUnencryptedTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "kms:*",
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists": { "aws:SecureTransport": "false" }
       }
     }
   ]

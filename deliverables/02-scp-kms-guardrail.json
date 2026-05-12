@@ -34,6 +34,47 @@
       "Resource": "*"
     },
     {
+      "Sid": "DenyConfigAndGuardDutyTampering",
+      "Effect": "Deny",
+      "Action": [
+        "config:DeleteConfigRule",
+        "config:DeleteConfigurationRecorder",
+        "config:DeleteDeliveryChannel",
+        "config:DeleteEvaluationResults",
+        "config:StopConfigurationRecorder",
+        "guardduty:DeleteDetector",
+        "guardduty:DeleteMembers",
+        "guardduty:DisassociateFromMasterAccount",
+        "guardduty:StopMonitoringMembers"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyKmsActionsOutsideApprovedRegion",
+      "Effect": "Deny",
+      "NotAction": [
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:ListKeys",
+        "kms:ListAliases"
+      ],
+      "Resource": "arn:aws:kms:*:123456789012:key/*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": "us-east-1"
+        }
+      }
+    },
+    {
+      "Sid": "DenyLeavingOrganization",
+      "Effect": "Deny",
+      "Action": [
+        "organizations:LeaveOrganization",
+        "account:CloseAccount"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "DenyRootPrincipalExceptRecoveryAndBilling",
       "Effect": "Deny",
       "NotAction": [
