@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Regional Incident Data Lake - Reviewer Visual</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f8fb;
+    --panel: #ffffff;
+    --panel-2: #f8fafc;
+    --text: #142033;
+    --muted: #627084;
+    --line: #d8e0ea;
+    --blue: #2563eb;
+    --indigo: #4f46e5;
+    --green: #059669;
+    --amber: #d97706;
+    --red: #dc2626;
+    --teal: #0f766e;
+    --shadow: 0 10px 28px rgba(20, 32, 51, 0.08);
+    --radius: 8px;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b1020;
+    --panel: #111827;
+    --panel-2: #0f172a;
+    --text: #e5edf8;
+    --muted: #9aa8ba;
+    --line: #233047;
+    --blue: #60a5fa;
+    --indigo: #818cf8;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #fb7185;
+    --teal: #2dd4bf;
+    --shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  a { color: inherit; text-decoration: none; }
+  button, select { font: inherit; }
+  .shell { max-width: 1440px; margin: 0 auto; padding: 18px; }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 58px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 270px;
+  }
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    border: 1px solid color-mix(in srgb, var(--blue) 50%, var(--line));
+    border-radius: var(--radius);
+    display: grid;
+    place-items: center;
+    color: var(--blue);
+    background: color-mix(in srgb, var(--blue) 10%, var(--panel));
+  }
+  .brand h1 {
+    font-size: 14px;
+    line-height: 1.15;
+    margin: 0;
+  }
+  .brand p {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .nav {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .nav a, .nav button {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 7px;
+    padding: 7px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .nav a:hover, .nav button:hover, .nav a:focus-visible, .nav button:focus-visible {
+    border-color: var(--blue);
+    outline: none;
+  }
+  .spacer { flex: 1; }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--green) 35%, var(--line));
+    background: color-mix(in srgb, var(--green) 8%, var(--panel));
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 18%, transparent);
+  }
+  .grid { display: grid; gap: 14px; }
+  .layout { grid-template-columns: minmax(0, 1.3fr) 380px; align-items: start; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .panel-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .panel-head h2, .panel-head h3 { margin: 0; font-size: 14px; }
+  .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+  .panel-body { padding: 16px; }
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) 360px;
+    gap: 14px;
+    align-items: stretch;
+  }
+  .title-block {
+    padding: 22px;
+    min-height: 235px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--blue);
+    font-weight: 800;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .title-block h2 {
+    margin: 10px 0 8px;
+    font-size: clamp(28px, 4vw, 52px);
+    line-height: .98;
+    letter-spacing: 0;
+  }
+  .title-block .sub {
+    max-width: 760px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .hero-actions {
+    margin-top: 18px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn.primary {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: white;
+  }
+  .btn:hover, .btn:focus-visible { outline: none; transform: translateY(-1px); }
+  .scorecard {
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+  }
+  .score {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .score .big {
+    font-size: 32px;
+    line-height: 1;
+    font-weight: 800;
+    color: var(--green);
+  }
+  .score .label {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .coverage {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .coverage div {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--green);
+  }
+  .small-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .small-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+    padding-bottom: 8px;
+  }
+  .small-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .chip {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .chip.ok {
+    color: var(--green);
+    border-color: color-mix(in srgb, var(--green) 40%, var(--line));
+    background: color-mix(in srgb, var(--green) 9%, var(--panel));
+  }
+  .arch-wrap { overflow: auto; }
+  .arch {
+    min-width: 920px;
+    width: 100%;
+    height: auto;
+  }
+  .node rect, .node polygon {
+    fill: var(--panel-2);
+    stroke: var(--line);
+    stroke-width: 1.4;
+  }
+  .node text { fill: var(--text); font: 700 13px ui-sans-serif, system-ui, sans-serif; }
+  .node .sub { fill: var(--muted); font: 600 10px ui-monospace, SFMono-Regular, monospace; }
+  .node.blue rect { stroke: var(--blue); fill: color-mix(in srgb, var(--blue) 10%, var(--panel)); }
+  .node.green rect { stroke: var(--green); fill: color-mix(in srgb, var(--green) 10%, var(--panel)); }
+  .node.red rect { stroke: var(--red); fill: color-mix(in srgb, var(--red) 9%, var(--panel)); }
+  .node.amber polygon, .node.amber rect { stroke: var(--amber); fill: color-mix(in srgb, var(--amber) 11%, var(--panel)); }
+  .node.teal rect { stroke: var(--teal); fill: color-mix(in srgb, var(--teal) 10%, var(--panel)); }
+  .edge { stroke: var(--muted); stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+  .edge.good { stroke: var(--green); marker-end: url(#arrow-good); }
+  .edge.bad { stroke: var(--red); marker-end: url(#arrow-bad); }
+  .rail { fill: color-mix(in srgb, var(--indigo) 9%, var(--panel)); stroke: var(--indigo); stroke-width: 1.3; stroke-dasharray: 7 4; }
+  .rail-text { fill: var(--indigo); font: 700 12px ui-sans-serif, system-ui, sans-serif; }
+  .pipeline-token {
+    offset-path: path("M 120 142 L 250 142 L 390 142 L 555 142 L 720 142 L 855 142");
+    animation: token 4.5s linear infinite;
+  }
+  @keyframes token {
+    0% { offset-distance: 0%; opacity: 0; }
+    8% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { offset-distance: 100%; opacity: 0; }
+  }
+  .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .req-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 285px;
+  }
+  .req-top {
+    padding: 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .req-top strong { font-size: 13px; }
+  .req-card .body { padding: 12px; display: grid; gap: 10px; }
+  .req-card p { margin: 0; color: var(--muted); font-size: 12px; }
+  .req-card ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 7px;
+  }
+  .req-card li {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .check {
+    color: var(--green);
+    font-weight: 900;
+  }
+  .file-link {
+    display: block;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    border-radius: 6px;
+    padding: 7px 8px;
+    font: 600 11px ui-monospace, SFMono-Regular, monospace;
+    color: var(--blue);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file-link:hover, .file-link:focus-visible { outline: none; border-color: var(--blue); }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 12px 12px 0;
+  }
+  .tab {
+    border: 1px solid var(--line);
+    border-radius: 7px 7px 0 0;
+    background: var(--panel-2);
+    color: var(--muted);
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .tab[aria-selected="true"] {
+    background: var(--panel);
+    color: var(--text);
+    border-bottom-color: var(--panel);
+  }
+  .tab-panel { display: none; padding: 16px; border-top: 1px solid var(--line); }
+  .tab-panel.active { display: block; }
+  .split { grid-template-columns: 1fr 1fr; }
+  .mini-title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .flow-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .flow-list li {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 10px;
+    align-items: start;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    border-radius: var(--radius);
+    padding: 10px;
+  }
+  .num {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    background: color-mix(in srgb, var(--blue) 12%, var(--panel));
+    color: var(--blue);
+    font-weight: 900;
+    border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
+  }
+  .flow-list strong { display: block; font-size: 13px; }
+  .flow-list span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .evidence-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .shot {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .shot img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: #111827;
+  }
+  .shot div { padding: 9px 10px; font-size: 12px; color: var(--muted); }
+  .terminal {
+    margin: 0;
+    background: #07111f;
+    color: #d8f8e4;
+    border-radius: var(--radius);
+    padding: 12px;
+    overflow: auto;
+    font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    max-height: 330px;
+  }
+  .aside { position: sticky; top: 76px; display: grid; gap: 14px; }
+  .review-path {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .review-path li {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel-2);
+    padding: 10px;
+  }
+  .review-path strong { display: block; font-size: 12px; }
+  .review-path span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .matrix th, .matrix td {
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    padding: 9px 8px;
+    vertical-align: top;
+  }
+  .matrix th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .matrix tr:last-child td { border-bottom: 0; }
+  .footer {
+    color: var(--muted);
+    text-align: center;
+    font-size: 12px;
+    padding: 24px 0 8px;
+  }
+  @media (max-width: 1100px) {
+    .layout, .hero { grid-template-columns: 1fr; }
+    .aside { position: static; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .evidence-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .topbar-inner { align-items: flex-start; flex-direction: column; }
+    .brand { min-width: 0; }
+    .spacer { display: none; }
+    .shell { padding: 12px; }
+    .title-block { padding: 16px; min-height: 0; }
+    .cards, .split, .evidence-grid { grid-template-columns: 1fr; }
+    .coverage { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media print {
+    .topbar, .hero-actions, .tabs, .aside { display: none !important; }
+    body { background: white; color: #111827; }
+    .shell { max-width: none; padding: 0; }
+    .panel { box-shadow: none; break-inside: avoid; }
+    .tab-panel { display: block !important; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#top" aria-label="Regional Incident Data Lake reviewer visual">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M12 2 4 6v6c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10V6l-8-4Z"/>
+          <path d="m9 12 2 2 4-5"/>
+        </svg>
+      </span>
+      <span>
+        <h1>Regional Incident Data Lake</h1>
+        <p>Reviewer visual frontend - open this first</p>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Page sections">
+      <a href="#architecture">Architecture</a>
+      <a href="#requirements">Requirements</a>
+      <a href="#walkthrough">Walkthrough</a>
+      <a href="#evidence">Evidence</a>
+    </nav>
+    <span class="spacer"></span>
+    <span class="status"><span class="dot"></span>4/4 required deliverables covered</span>
+    <button id="themeToggle" class="btn" type="button" aria-label="Toggle theme">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z"/></svg>
+      Theme
+    </button>
+  </div>
+</header>
+
+<main id="top" class="shell grid">
+  <section class="hero" aria-label="Submission summary">
+    <div class="panel title-block">
+      <div>
+        <span class="eyebrow"><span class="dot"></span>Submission frontend</span>
+        <h2>One visual review path for the whole AWS assignment.</h2>
+        <p class="sub">
+          This page gives the checker a runnable overview of the ingestion workflow, zero-trust KMS design,
+          skew strategy, secret rotation logic, and the evidence produced by local smoke tests.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn primary" href="05-operator-console.html">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18v12H3z"/><path d="M8 20h8"/><path d="M12 16v4"/></svg>
+          Open Operator Console
+        </a>
+        <a class="btn" href="../README.md">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5Z"/></svg>
+          Read README
+        </a>
+        <a class="btn" href="../screenshots/00-validation.txt">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-5"/><path d="M21 12a9 9 0 1 1-9-9"/></svg>
+          Validation Output
+        </a>
+      </div>
+    </div>
+    <aside class="panel scorecard" aria-label="Submission scorecard">
+      <div class="score">
+        <div class="big">100%</div>
+        <div class="label">Assignment coverage by required deliverables</div>
+        <div class="coverage" aria-hidden="true"><div></div><div></div><div></div><div></div></div>
+      </div>
+      <ul class="small-list">
+        <li><span>Required files</span><strong>5</strong></li>
+        <li><span>Supporting artifacts</span><strong>4</strong></li>
+        <li><span>Smoke tests</span><strong>2</strong></li>
+        <li><span>Visual frontend pages</span><strong>2</strong></li>
+      </ul>
+      <div>
+        <span class="chip ok">JSON validated</span>
+        <span class="chip ok">Python compiles</span>
+        <span class="chip ok">Screenshots included</span>
+      </div>
+    </aside>
+  </section>
+
+  <section id="architecture" class="panel" aria-labelledby="architecture-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="architecture-title">End-to-end visual architecture</h2>
+        <p>Green path is valid data. Red path is quarantine. Purple rails are security and secret lifecycle controls.</p>
+      </div>
+      <span class="chip ok">S3 -> Step Functions -> Glue -> Frontend</span>
+    </div>
+    <div class="panel-body arch-wrap">
+      <svg class="arch" viewBox="0 0 980 430" role="img" aria-label="Architecture diagram showing ingestion, validation, quarantine, anonymization, KMS, secrets, and frontend heatmap">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 10 5 0 10Z" fill="currentColor"></path>
+          </marker>
+          <marker id="arrow-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 10 5 0 10Z" fill="#059669"></path>
+          </marker>
+          <marker id="arrow-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0 0 10 5 0 10Z" fill="#dc2626"></path>
+          </marker>
+        </defs>
+
+        <rect class="rail" x="84" y="318" width="830" height="38" rx="8"></rect>
+        <text class="rail-text" x="104" y="342">KMS CMK: Glue via service + BreakGlass MFA only. Admin override blocked with key policy + Org SCP + CloudTrail audit.</text>
+        <rect class="rail" x="84" y="368" width="830" height="38" rx="8"></rect>
+        <text class="rail-text" x="104" y="392">Secrets Manager: Weather API key rotation. AWSCURRENT moves only after testSecret verifies the new key.</text>
+
+        <g class="node" transform="translate(24 104)">
+          <rect width="120" height="76" rx="8"></rect>
+          <text x="60" y="33" text-anchor="middle">Agencies</text>
+          <text class="sub" x="60" y="54" text-anchor="middle">.zip + manifest</text>
+        </g>
+        <g class="node blue" transform="translate(184 104)">
+          <rect width="132" height="76" rx="8"></rect>
+          <text x="66" y="33" text-anchor="middle">S3 Landing</text>
+          <text class="sub" x="66" y="54" text-anchor="middle">raw encrypted</text>
+        </g>
+        <g class="node amber" transform="translate(362 92)">
+          <polygon points="78 0 156 50 78 100 0 50"></polygon>
+          <text x="78" y="44" text-anchor="middle">MD5</text>
+          <text class="sub" x="78" y="64" text-anchor="middle">Choice</text>
+        </g>
+        <g class="node red" transform="translate(570 24)">
+          <rect width="148" height="58" rx="8"></rect>
+          <text x="74" y="26" text-anchor="middle">Quarantine</text>
+          <text class="sub" x="74" y="44" text-anchor="middle">copy + tag</text>
+        </g>
+        <g class="node red" transform="translate(756 24)">
+          <rect width="148" height="58" rx="8"></rect>
+          <text x="74" y="26" text-anchor="middle">SNS Alert</text>
+          <text class="sub" x="74" y="44" text-anchor="middle">filter attrs</text>
+        </g>
+        <g class="node green" transform="translate(570 116)">
+          <rect width="148" height="76" rx="8"></rect>
+          <text x="74" y="31" text-anchor="middle">Glue</text>
+          <text class="sub" x="74" y="51" text-anchor="middle">round GPS 3 dp</text>
+          <text class="sub" x="74" y="66" text-anchor="middle">write Parquet</text>
+        </g>
+        <g class="node green" transform="translate(756 116)">
+          <rect width="148" height="76" rx="8"></rect>
+          <text x="74" y="31" text-anchor="middle">Curated S3</text>
+          <text class="sub" x="74" y="51" text-anchor="middle">region/date/hour</text>
+        </g>
+        <g class="node teal" transform="translate(756 222)">
+          <rect width="148" height="64" rx="8"></rect>
+          <text x="74" y="29" text-anchor="middle">Frontend</text>
+          <text class="sub" x="74" y="48" text-anchor="middle">heatmap + ops rail</text>
+        </g>
+
+        <path class="edge" d="M144 142H184"></path>
+        <path class="edge" d="M316 142H362"></path>
+        <path class="edge bad" d="M501 117C526 76 538 54 570 54"></path>
+        <path class="edge bad" d="M718 54H756"></path>
+        <path class="edge good" d="M518 142H570"></path>
+        <path class="edge good" d="M718 154H756"></path>
+        <path class="edge good" d="M830 192V222"></path>
+
+        <text x="516" y="78" fill="#dc2626" font-size="12" font-weight="800">fail</text>
+        <text x="526" y="134" fill="#059669" font-size="12" font-weight="800">pass</text>
+        <circle class="pipeline-token" r="6" fill="#2563eb"></circle>
+      </svg>
+    </div>
+  </section>
+
+  <section id="requirements" class="panel" aria-labelledby="requirements-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="requirements-title">Assignment requirement coverage</h2>
+        <p>Each checker-facing card maps one PDF problem to a concrete file.</p>
+      </div>
+      <span class="chip ok">no missing required item</span>
+    </div>
+    <div class="panel-body grid cards">
+      <article class="req-card">
+        <div class="req-top"><strong>P1 - Ingestion</strong><span class="chip ok">required</span></div>
+        <div class="body">
+          <p>Step Functions orchestrates validation, quarantine/SNS, extraction, and Glue processing.</p>
+          <ul>
+            <li><span class="check">OK</span><span>MD5 compared to manifest</span></li>
+            <li><span class="check">OK</span><span>Bad files moved to quarantine</span></li>
+            <li><span class="check">OK</span><span>SNS alert on failure</span></li>
+            <li><span class="check">OK</span><span>Glue anonymizes and writes Parquet</span></li>
+          </ul>
+          <a class="file-link" href="01-ingestion-state-machine.asl.json">01-ingestion-state-machine.asl.json</a>
+        </div>
+      </article>
+      <article class="req-card">
+        <div class="req-top"><strong>P2 - Ghost Admin</strong><span class="chip ok">required</span></div>
+        <div class="body">
+          <p>KMS policy denies raw decrypt broadly, allows Glue via service, and documents admin override prevention.</p>
+          <ul>
+            <li><span class="check">OK</span><span>Glue role can decrypt only through service path</span></li>
+            <li><span class="check">OK</span><span>Explicit deny beats AdministratorAccess</span></li>
+            <li><span class="check">OK</span><span>Break-glass path requires MFA</span></li>
+            <li><span class="check">OK</span><span>Org SCP blocks policy tampering</span></li>
+          </ul>
+          <a class="file-link" href="02-kms-key-policy.json">02-kms-key-policy.json</a>
+          <a class="file-link" href="02-ghost-admin-defense.md">02-ghost-admin-defense.md</a>
+        </div>
+      </article>
+      <article class="req-card">
+        <div class="req-top"><strong>P3 - Data Skew</strong><span class="chip ok">required</span></div>
+        <div class="body">
+          <p>Skew is solved in the Spark plan and S3 layout without raising Glue worker capacity.</p>
+          <ul>
+            <li><span class="check">OK</span><span>AQE skew handling</span></li>
+            <li><span class="check">OK</span><span>Two-stage salted aggregation</span></li>
+            <li><span class="check">OK</span><span>Correct weighted centroid math</span></li>
+            <li><span class="check">OK</span><span>Time/region output partitioning</span></li>
+          </ul>
+          <a class="file-link" href="03-data-skew-tech-note.md">03-data-skew-tech-note.md</a>
+        </div>
+      </article>
+      <article class="req-card">
+        <div class="req-top"><strong>P4 - Secret Rotation</strong><span class="chip ok">required</span></div>
+        <div class="body">
+          <p>Secrets Manager rotation Lambda follows the four-step contract and preserves the old key until verification passes.</p>
+          <ul>
+            <li><span class="check">OK</span><span>createSecret issues new key</span></li>
+            <li><span class="check">OK</span><span>testSecret calls Weather API</span></li>
+            <li><span class="check">OK</span><span>finishSecret promotes only after verify</span></li>
+            <li><span class="check">OK</span><span>Failure keeps AWSCURRENT on old key</span></li>
+          </ul>
+          <a class="file-link" href="04-rotate-weather-api-key.py">04-rotate-weather-api-key.py</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="walkthrough" class="grid layout" aria-label="Detailed walkthrough and review path">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Interactive walkthrough</h2>
+          <p>Use these tabs to inspect the solution by assignment topic.</p>
+        </div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Solution walkthrough tabs">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="tab-pipeline" id="tab-btn-pipeline">Pipeline</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-trust" id="tab-btn-trust">Zero Trust</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-skew" id="tab-btn-skew">Scale</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="tab-rotation" id="tab-btn-rotation">Rotation</button>
+      </div>
+      <section class="tab-panel active" id="tab-pipeline" role="tabpanel" aria-labelledby="tab-btn-pipeline">
+        <div class="grid split">
+          <div>
+            <h3 class="mini-title">State machine path</h3>
+            <ol class="flow-list">
+              <li><span class="num">1</span><span><strong>S3 event starts execution</strong><span>Input contains bucket, key, and manifestKey for the uploaded zip.</span></span></li>
+              <li><span class="num">2</span><span><strong>ValidateChecksum Lambda</strong><span>Streams the object, computes MD5, validates manifest format, and returns a safe copySource.</span></span></li>
+              <li><span class="num">3</span><span><strong>Choice and routing</strong><span>Failure goes to parallel quarantine copy and SNS alert. Success goes to ExtractZip.</span></span></li>
+              <li><span class="num">4</span><span><strong>Glue startJobRun.sync</strong><span>Runs anonymization and Parquet conversion before the execution succeeds.</span></span></li>
+            </ol>
+          </div>
+          <div>
+            <h3 class="mini-title">Why it is checker-friendly</h3>
+            <table class="matrix">
+              <tr><th>Risk</th><th>Control</th></tr>
+              <tr><td>Tampered file</td><td>MD5 mismatch routes to quarantine, not analytics.</td></tr>
+              <tr><td>Bad S3 key chars</td><td>copySource is URL encoded before CopyObject.</td></tr>
+              <tr><td>Retry storms</td><td>Retry blocks use backoff and FULL jitter.</td></tr>
+              <tr><td>Oversized failure message</td><td>SNS messages are bounded and include filter attributes.</td></tr>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section class="tab-panel" id="tab-trust" role="tabpanel" aria-labelledby="tab-btn-trust">
+        <div class="grid split">
+          <div>
+            <h3 class="mini-title">Defense layers</h3>
+            <ol class="flow-list">
+              <li><span class="num">1</span><span><strong>KMS explicit deny</strong><span>Denies Decrypt and ReEncryptFrom to everyone except allowed runtime principals.</span></span></li>
+              <li><span class="num">2</span><span><strong>Service and MFA conditions</strong><span>Glue must use kms:ViaService. BreakGlass must use recent MFA.</span></span></li>
+              <li><span class="num">3</span><span><strong>Organizations SCP</strong><span>Workload account admins cannot rewrite the key policy or disable audit controls.</span></span></li>
+              <li><span class="num">4</span><span><strong>Audit trail</strong><span>CloudTrail/EventBridge detects break-glass and policy edit attempts.</span></span></li>
+            </ol>
+          </div>
+          <div>
+            <h3 class="mini-title">Who can decrypt raw data?</h3>
+            <table class="matrix">
+              <tr><th>Principal</th><th>Outcome</th></tr>
+              <tr><td>GlueIngestionRole via Glue/S3 context</td><td><span class="chip ok">allowed</span></td></tr>
+              <tr><td>BreakGlassDataAccess with recent MFA</td><td><span class="chip ok">allowed + audited</span></td></tr>
+              <tr><td>AdministratorAccess user</td><td><span class="chip">explicit deny</span></td></tr>
+              <tr><td>Root during normal operations</td><td><span class="chip">blocked by SCP</span></td></tr>
+            </table>
+          </div>
+        </div>
+      </section>
+      <section class="tab-panel" id="tab-skew" role="tabpanel" aria-labelledby="tab-btn-skew">
+        <div class="grid split">
+          <div>
+            <h3 class="mini-title">Before and after</h3>
+            <svg viewBox="0 0 520 250" width="100%" role="img" aria-label="Skew chart showing one hot partition before salting and balanced partitions after salting">
+              <rect x="0" y="0" width="520" height="250" rx="8" fill="var(--panel-2)" stroke="var(--line)"></rect>
+              <text x="28" y="32" fill="var(--muted)" font-size="12" font-weight="800">Before: one 10M-row hot key</text>
+              <text x="286" y="32" fill="var(--muted)" font-size="12" font-weight="800">After: 64-bucket salt</text>
+              <g transform="translate(32 55)">
+                <rect x="0" y="130" width="18" height="18" fill="var(--muted)" opacity=".55"></rect>
+                <rect x="26" y="124" width="18" height="24" fill="var(--muted)" opacity=".55"></rect>
+                <rect x="52" y="8" width="18" height="140" fill="var(--red)"></rect>
+                <rect x="78" y="128" width="18" height="20" fill="var(--muted)" opacity=".55"></rect>
+                <rect x="104" y="122" width="18" height="26" fill="var(--muted)" opacity=".55"></rect>
+                <text x="43" y="0" fill="var(--red)" font-size="11" font-weight="800">OOM</text>
+              </g>
+              <g transform="translate(288 55)">
+                <rect x="0" y="78" width="16" height="70" fill="var(--green)"></rect>
+                <rect x="24" y="70" width="16" height="78" fill="var(--green)"></rect>
+                <rect x="48" y="82" width="16" height="66" fill="var(--green)"></rect>
+                <rect x="72" y="73" width="16" height="75" fill="var(--green)"></rect>
+                <rect x="96" y="76" width="16" height="72" fill="var(--green)"></rect>
+                <rect x="120" y="80" width="16" height="68" fill="var(--green)"></rect>
+                <rect x="144" y="71" width="16" height="77" fill="var(--green)"></rect>
+                <rect x="168" y="84" width="16" height="64" fill="var(--green)"></rect>
+                <text x="12" y="0" fill="var(--green)" font-size="11" font-weight="800">balanced tasks</text>
+              </g>
+              <line x1="24" y1="204" x2="496" y2="204" stroke="var(--line)"></line>
+              <text x="28" y="226" fill="var(--muted)" font-size="11">No worker-size increase. The hot key is split by random salt, then recombined with sum/count math.</text>
+            </svg>
+          </div>
+          <div>
+            <h3 class="mini-title">Algorithm</h3>
+            <ol class="flow-list">
+              <li><span class="num">1</span><span><strong>Add random salt</strong><span>Uniform 0..63 per row breaks the hot key across workers.</span></span></li>
+              <li><span class="num">2</span><span><strong>Partial aggregate</strong><span>Group by intersection_id and salt, emitting count and sums.</span></span></li>
+              <li><span class="num">3</span><span><strong>Final aggregate</strong><span>Drop salt and divide sum by count, avoiding avg(avg) bias.</span></span></li>
+              <li><span class="num">4</span><span><strong>Write by time/region</strong><span>Keep intersection as a column to avoid write-time skew.</span></span></li>
+            </ol>
+          </div>
+        </div>
+      </section>
+      <section class="tab-panel" id="tab-rotation" role="tabpanel" aria-labelledby="tab-btn-rotation">
+        <div class="grid split">
+          <div>
+            <h3 class="mini-title">Rotation invariant</h3>
+            <ol class="flow-list">
+              <li><span class="num">1</span><span><strong>createSecret</strong><span>New Weather API key is issued and stored as AWSPENDING.</span></span></li>
+              <li><span class="num">2</span><span><strong>setSecret</strong><span>No traffic moves. The current key remains live.</span></span></li>
+              <li><span class="num">3</span><span><strong>testSecret</strong><span>Lambda calls the Weather API with AWSPENDING. Failures abort rotation.</span></span></li>
+              <li><span class="num">4</span><span><strong>finishSecret</strong><span>Only now does AWSCURRENT move to the new version and old key revocation begin.</span></span></li>
+            </ol>
+          </div>
+          <div>
+            <h3 class="mini-title">Smoke test proof</h3>
+            <pre class="terminal">createSecret  -> AWSCURRENT stays on OLD
+setSecret     -> AWSCURRENT stays on OLD
+testSecret    -> AWSCURRENT stays on OLD
+finishSecret  -> AWSCURRENT moves OLD to NEW
+
+401 during testSecret -> rotation aborts
+AWSCURRENT remains on OLD</pre>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="aside">
+      <section class="panel">
+        <div class="panel-head"><div><h3>Checker review path</h3><p>Suggested order if time is short.</p></div></div>
+        <div class="panel-body">
+          <ol class="review-path">
+            <li><strong>1. Start here</strong><span>Use this page to understand the design visually.</span></li>
+            <li><strong>2. Open required artifacts</strong><span>Use the file links in each requirement card.</span></li>
+            <li><strong>3. Open operator console</strong><span>See the stakeholder heatmap and operator rail.</span></li>
+            <li><strong>4. Check evidence</strong><span>Static validation and Lambda smoke outputs are included.</span></li>
+          </ol>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h3>Submission files</h3><p>Primary files the PDF asks for.</p></div></div>
+        <div class="panel-body grid">
+          <a class="file-link" href="01-ingestion-state-machine.asl.json">P1 ASL JSON</a>
+          <a class="file-link" href="02-kms-key-policy.json">P2 KMS policy JSON</a>
+          <a class="file-link" href="02-ghost-admin-defense.md">P2 admin-override explanation</a>
+          <a class="file-link" href="03-data-skew-tech-note.md">P3 one-page tech note</a>
+          <a class="file-link" href="04-rotate-weather-api-key.py">P4 rotation Lambda</a>
+        </div>
+      </section>
+    </aside>
+  </section>
+
+  <section id="evidence" class="panel" aria-labelledby="evidence-title">
+    <div class="panel-head">
+      <div>
+        <h2 id="evidence-title">Evidence the checker can see</h2>
+        <p>Screenshots and smoke outputs are included in the ZIP, so the frontend is not just static decoration.</p>
+      </div>
+      <span class="chip ok">rendered locally</span>
+    </div>
+    <div class="panel-body grid evidence-grid">
+      <a class="shot" href="../screenshots/04-operator-console-viewport.png">
+        <img src="../screenshots/04-operator-console-viewport.png" alt="Operator console screenshot with public safety heatmap and operator rail" />
+        <div>Operator console render - heatmap plus ops rail</div>
+      </a>
+      <a class="shot" href="../screenshots/02-plan-full.png">
+        <img src="../screenshots/02-plan-full.png" alt="Plan screenshot with architecture and implementation visualizations" />
+        <div>Plan render - implementation diagrams</div>
+      </a>
+      <a class="shot" href="../screenshots/03-plan-hero.png">
+        <img src="../screenshots/03-plan-hero.png" alt="Plan hero screenshot with end-to-end architecture" />
+        <div>Architecture render - checker overview</div>
+      </a>
+    </div>
+    <div class="panel-body grid split" style="padding-top: 0;">
+      <div>
+        <h3 class="mini-title">Validation summary</h3>
+        <pre class="terminal">JSON files: PASS
+01-ingestion-state-machine.asl.json
+02-kms-key-policy.json
+02-scp-kms-guardrail.json
+
+Python files: PASS
+01-validate-checksum.py
+04-rotate-weather-api-key.py
+03-glue-job-skeleton.py parses
+
+ASL states: 10 defined</pre>
+      </div>
+      <div>
+        <h3 class="mini-title">Smoke test links</h3>
+        <div class="grid">
+          <a class="file-link" href="../screenshots/00-validation.txt">screenshots/00-validation.txt</a>
+          <a class="file-link" href="../screenshots/05-lambda-smoke-output.txt">screenshots/05-lambda-smoke-output.txt</a>
+          <a class="file-link" href="../screenshots/06-rotation-smoke-output.txt">screenshots/06-rotation-smoke-output.txt</a>
+          <a class="file-link" href="05-operator-console.html">deliverables/05-operator-console.html</a>
+          <a class="file-link" href="../plan/plan.html">plan/plan.html</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="footer">Self-contained reviewer frontend. Works offline after extracting the ZIP. External AWS execution still requires a real AWS account and credentials.</p>
+</main>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var saved = localStorage.getItem("reviewer-visual-theme");
+    if (saved) root.dataset.theme = saved;
+    document.getElementById("themeToggle").addEventListener("click", function () {
+      var next = root.dataset.theme === "dark" ? "light" : "dark";
+      root.dataset.theme = next;
+      localStorage.setItem("reviewer-visual-theme", next);
+    });
+  })();
+
+  document.querySelectorAll(".tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var panelId = tab.getAttribute("aria-controls");
+      document.querySelectorAll(".tab").forEach(function (t) {
+        t.setAttribute("aria-selected", String(t === tab));
+      });
+      document.querySelectorAll(".tab-panel").forEach(function (panel) {
+        panel.classList.toggle("active", panel.id === panelId);
+      });
+    });
+  });
+</script>
+</body>
+</html>

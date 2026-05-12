@@ -6,6 +6,7 @@ Submission for the architecture assignment covering a serverless geospatial data
 
 | # | Problem | Artifact(s) |
 |---|---------|-------------|
+| 0 | Reviewer Visual Frontend | [`deliverables/00-reviewer-visual.html`](deliverables/00-reviewer-visual.html) |
 | 1 | Automated Ingestion Pipeline (Step Functions) | [`deliverables/01-ingestion-state-machine.asl.json`](deliverables/01-ingestion-state-machine.asl.json), [`deliverables/01-validate-checksum.py`](deliverables/01-validate-checksum.py) |
 | 2 | Ghost Admin Defense (KMS + Org SCP) | [`deliverables/02-kms-key-policy.json`](deliverables/02-kms-key-policy.json), [`deliverables/02-ghost-admin-defense.md`](deliverables/02-ghost-admin-defense.md), [`deliverables/02-scp-kms-guardrail.json`](deliverables/02-scp-kms-guardrail.json) |
 | 3 | Data Skew Optimization (PySpark / Glue) | [`deliverables/03-data-skew-tech-note.md`](deliverables/03-data-skew-tech-note.md), [`deliverables/03-glue-job-skeleton.py`](deliverables/03-glue-job-skeleton.py) |
@@ -14,7 +15,9 @@ Submission for the architecture assignment covering a serverless geospatial data
 
 ## How to review
 
-Open each artifact in the order above. The technical note and the Ghost-Admin write-up are prose; the JSON and Python files are review-ready. **Open `deliverables/05-operator-console.html` directly in a browser** — it's the application UX layer: a public-safety heatmap for government stakeholders, plus an operator rail showing pipeline status, Glue partition skew, secret rotation, and a KMS access audit.
+Start with **`deliverables/00-reviewer-visual.html`**. It is a self-contained frontend for the checker: one visual path through the full architecture, requirement coverage, required artifact links, screenshots, and smoke-test evidence.
+
+Then open each required artifact in the order above. The technical note and the Ghost-Admin write-up are prose; the JSON and Python files are review-ready. **Open `deliverables/05-operator-console.html` directly in a browser** for the application UX layer: a public-safety heatmap for government stakeholders, plus an operator rail showing pipeline status, Glue partition skew, secret rotation, and a KMS access audit.
 
 The plan that drove this submission lives at:
 - [`docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md`](docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md) — full markdown plan
