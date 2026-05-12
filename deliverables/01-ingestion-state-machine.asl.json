@@ -1,0 +1,217 @@
+{
+  "Comment": "Regional Incident Data Lake — Ingestion Pipeline. Triggered when a .zip lands in incident-landing-prod. Validates MD5 against the sibling .manifest.json, routes failed files to incident-quarantine-prod with an SNS alert, otherwise extracts and runs the Glue anonymize-and-parquet job (rounds GPS to 3 decimal places, writes Parquet).",
+  "StartAt": "ValidateChecksum",
+  "States": {
+    "ValidateChecksum": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:123456789012:function:ValidateChecksum",
+        "Payload": {
+          "bucket.$": "$.bucket",
+          "key.$": "$.key",
+          "manifestKey.$": "$.manifestKey"
+        }
+      },
+      "ResultSelector": {
+        "checksumValid.$": "$.Payload.checksumValid",
+        "computedMd5.$": "$.Payload.computedMd5",
+        "expectedMd5.$": "$.Payload.expectedMd5",
+        "sizeBytes.$": "$.Payload.sizeBytes"
+      },
+      "ResultPath": "$.validation",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 4,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "FailureNotification"
+        }
+      ],
+      "Next": "ChecksumChoice"
+    },
+
+    "ChecksumChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.validation.checksumValid",
+          "BooleanEquals": true,
+          "Next": "ExtractZip"
+        }
+      ],
+      "Default": "QuarantineParallel"
+    },
+
+    "QuarantineParallel": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "CopyToQuarantine",
+          "States": {
+            "CopyToQuarantine": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:s3:copyObject",
+              "Parameters": {
+                "Bucket": "incident-quarantine-prod",
+                "Key.$": "$.key",
+                "CopySource.$": "States.Format('{}/{}', $.bucket, $.key)"
+              },
+              "ResultPath": null,
+              "Next": "DeleteFromLanding"
+            },
+            "DeleteFromLanding": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:s3:deleteObject",
+              "Parameters": {
+                "Bucket.$": "$.bucket",
+                "Key.$": "$.key"
+              },
+              "ResultPath": null,
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "PublishQuarantineAlert",
+          "States": {
+            "PublishQuarantineAlert": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
+                "Subject": "Incident ingest quarantined: checksum mismatch",
+                "Message.$": "States.Format('File s3://{}/{} quarantined. Expected MD5 {}, computed {}.', $.bucket, $.key, $.validation.expectedMd5, $.validation.computedMd5)"
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.quarantine",
+      "Next": "ChecksumFailed"
+    },
+
+    "ChecksumFailed": {
+      "Type": "Fail",
+      "Error": "ChecksumMismatch",
+      "Cause": "MD5 checksum did not match the manifest. File moved to incident-quarantine-prod and SNS alert published to incident-pipeline-alerts."
+    },
+
+    "ExtractZip": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:123456789012:function:ExtractZip",
+        "Payload": {
+          "bucket.$": "$.bucket",
+          "key.$": "$.key"
+        }
+      },
+      "ResultSelector": {
+        "extractedPrefix.$": "$.Payload.extractedPrefix",
+        "fileCount.$": "$.Payload.fileCount"
+      },
+      "ResultPath": "$.extraction",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 4,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "FailureNotification"
+        }
+      ],
+      "Next": "StartGlueAnonymize"
+    },
+
+    "StartGlueAnonymize": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "incident-anonymize-and-parquet",
+        "Arguments": {
+          "--source_bucket.$": "$.bucket",
+          "--source_prefix.$": "$.extraction.extractedPrefix",
+          "--target_bucket": "incident-curated-prod",
+          "--target_prefix": "curated/",
+          "--gps_precision": "3"
+        }
+      },
+      "ResultPath": "$.glue",
+      "Retry": [
+        {
+          "ErrorEquals": ["Glue.ConcurrentRunsExceededException"],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "FailureNotification"
+        }
+      ],
+      "Next": "GlueResultChoice"
+    },
+
+    "GlueResultChoice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.glue.JobRunState",
+          "StringEquals": "SUCCEEDED",
+          "Next": "IngestionSucceeded"
+        }
+      ],
+      "Default": "FailureNotification"
+    },
+
+    "FailureNotification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
+        "Subject": "Incident ingest FAILED",
+        "Message.$": "States.JsonToString($)"
+      },
+      "ResultPath": "$.notification",
+      "Next": "IngestionFailed"
+    },
+
+    "IngestionFailed": {
+      "Type": "Fail",
+      "Error": "IngestionFailed",
+      "Cause": "See SNS topic incident-pipeline-alerts and Step Functions execution input for details."
+    },
+
+    "IngestionSucceeded": {
+      "Type": "Succeed"
+    }
+  }
+}

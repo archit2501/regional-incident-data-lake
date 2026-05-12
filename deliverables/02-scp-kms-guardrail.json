@@ -1,0 +1,55 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyKmsKeyPolicyTamperingOrgWide",
+      "Effect": "Deny",
+      "Action": [
+        "kms:PutKeyPolicy",
+        "kms:ScheduleKeyDeletion",
+        "kms:DisableKey",
+        "kms:CreateGrant",
+        "kms:RetireGrant",
+        "kms:RevokeGrant"
+      ],
+      "Resource": "arn:aws:kms:*:123456789012:key/*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "aws:PrincipalARN": "arn:aws:iam::123456789012:role/KmsKeyAdmin"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDisablingCloudTrail",
+      "Effect": "Deny",
+      "Action": [
+        "cloudtrail:StopLogging",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:UpdateTrail",
+        "cloudtrail:PutEventSelectors"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyRootPrincipalExceptBilling",
+      "Effect": "Deny",
+      "NotAction": [
+        "aws-portal:*",
+        "billing:*",
+        "ce:*",
+        "consoleapp:*",
+        "iam:*",
+        "sso:*",
+        "sso-directory:*",
+        "support:*",
+        "organizations:DescribeOrganization"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "aws:PrincipalArn": "arn:aws:iam::123456789012:root"
+        }
+      }
+    }
+  ]
+}

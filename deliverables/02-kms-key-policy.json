@@ -1,0 +1,122 @@
+{
+  "Version": "2012-10-17",
+  "Id": "incident-data-lake-key-policy",
+  "Statement": [
+    {
+      "Sid": "EnableLimitedRootAccess",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:root" },
+      "Action": [
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:GetKeyRotationStatus",
+        "kms:ListAliases",
+        "kms:ListGrants",
+        "kms:ListKeyPolicies",
+        "kms:ListResourceTags"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowKeyAdministrationOnlyByKmsKeyAdminWithMFA",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:role/KmsKeyAdmin" },
+      "Action": [
+        "kms:PutKeyPolicy",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:UpdateAlias",
+        "kms:UpdateKeyDescription",
+        "kms:EnableKeyRotation",
+        "kms:DisableKeyRotation"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Bool":            { "aws:MultiFactorAuthPresent": "true" },
+        "NumericLessThan": { "aws:MultiFactorAuthAge":     "900"  }
+      }
+    },
+    {
+      "Sid": "AllowGlueDecryptViaService",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:role/GlueIngestionRole" },
+      "Action": [
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:GenerateDataKeyWithoutPlaintext",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService":                "glue.us-east-1.amazonaws.com",
+          "kms:EncryptionContext:project": "incident-data-lake"
+        }
+      }
+    },
+    {
+      "Sid": "AllowBreakGlassDecryptWithMFA",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:role/BreakGlassDataAccess" },
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Bool":            { "aws:MultiFactorAuthPresent": "true" },
+        "NumericLessThan": { "aws:MultiFactorAuthAge":     "900"  }
+      }
+    },
+    {
+      "Sid": "DenyDecryptToEveryoneElse",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "kms:Decrypt",
+      "Resource": "*",
+      "Condition": {
+        "ArnNotEquals": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::123456789012:role/GlueIngestionRole",
+            "arn:aws:iam::123456789012:role/BreakGlassDataAccess"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyKeyPolicyTampering",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": [
+        "kms:PutKeyPolicy",
+        "kms:DeleteAlias",
+        "kms:DisableKey",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion",
+        "kms:CreateGrant",
+        "kms:RetireGrant",
+        "kms:RevokeGrant"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::123456789012:role/KmsKeyAdmin"
+        }
+      }
+    },
+    {
+      "Sid": "DenyKeyPolicyTamperingWithoutMFA",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": [
+        "kms:PutKeyPolicy",
+        "kms:ScheduleKeyDeletion"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists":               { "aws:MultiFactorAuthPresent": "false" },
+        "NumericGreaterThanIfExists": { "aws:MultiFactorAuthAge":     "900"   }
+      }
+    }
+  ]
+}

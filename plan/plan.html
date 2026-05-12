@@ -1,0 +1,1416 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Regional Incident Data Lake — Assignment Plan</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: 'class' };
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  pre code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.55; }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chev { transition: transform .15s ease; }
+  details[open] > summary .chev { transform: rotate(90deg); }
+  .crit-pulse { box-shadow: inset 3px 0 0 #ef4444; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 9999px; font-weight: 500; }
+  /* Filter visibility */
+  body.filter-todo .task:not([data-status="todo"]) { display:none; }
+  body.filter-in_progress .task:not([data-status="in_progress"]) { display:none; }
+  body.filter-done .task:not([data-status="done"]) { display:none; }
+  body.filter-blocked .task:not([data-status="blocked"]) { display:none; }
+  /* Print */
+  @media print {
+    .no-print { display: none !important; }
+    details { break-inside: avoid; }
+    details > * { display: block !important; }
+    body { background: white !important; color: black !important; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+  }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+
+<!-- ============== STICKY HEADER ============== -->
+<header class="sticky top-0 z-20 backdrop-blur bg-white/85 dark:bg-slate-950/85 border-b border-slate-200 dark:border-slate-800 no-print">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
+    <div class="flex-1 min-w-[260px]">
+      <h1 class="text-base sm:text-lg font-semibold tracking-tight">Regional Incident Data Lake — Assignment Plan</h1>
+      <p class="text-xs text-slate-500 dark:text-slate-400">9 tasks · 8 deliverable artifacts · scope: medium</p>
+    </div>
+
+    <div id="progress-meter" class="hidden sm:flex flex-col items-end gap-1 w-44">
+      <div class="text-[11px] text-slate-500 dark:text-slate-400"><span id="progress-text">0 / 9 done</span></div>
+      <div class="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+        <div id="progress-bar" class="h-full bg-emerald-500 transition-all" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-1 flex-wrap">
+      <button data-filter="all"        class="filter-btn px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">All</button>
+      <button data-filter="todo"       class="filter-btn px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">To do</button>
+      <button data-filter="in_progress"class="filter-btn px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">In progress</button>
+      <button data-filter="done"       class="filter-btn px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Done</button>
+      <button data-filter="blocked"    class="filter-btn px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Blocked</button>
+    </div>
+
+    <button id="expand-all" class="px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Expand all</button>
+    <button id="collapse-all" class="px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Collapse all</button>
+
+    <button id="dark-toggle" class="px-2.5 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">🌓</button>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+<!-- ============== HERO ============== -->
+<section class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+  <div class="grid sm:grid-cols-3 gap-4">
+    <div class="sm:col-span-2 space-y-3">
+      <div>
+        <h2 class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Goal</h2>
+        <p class="text-sm">Produce four assignment deliverables that solve <strong>data integrity</strong>, <strong>privilege isolation</strong>, <strong>scale</strong>, and <strong>secret rotation</strong> for a serverless geospatial data lake on AWS.</p>
+      </div>
+      <div>
+        <h2 class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Architecture</h2>
+        <p class="text-sm">Event-driven ingestion via S3 → EventBridge → Step Functions, with checksum validation, quarantine routing, and a Glue PySpark anonymizer. Encryption-at-rest with a KMS key policy hardened against privileged-admin override using explicit deny + SCP backstop. Skew handled with AQE + two-stage salted aggregation. Weather API secret rotated via the 4-step Lambda contract with live verification before promotion.</p>
+      </div>
+    </div>
+    <div class="space-y-3 text-sm">
+      <div>
+        <h2 class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Tech stack</h2>
+        <ul class="space-y-0.5 text-xs">
+          <li>AWS Step Functions (ASL)</li>
+          <li>AWS Glue 4.0 / PySpark 3.3</li>
+          <li>AWS KMS + Organizations SCP</li>
+          <li>AWS Secrets Manager rotation</li>
+          <li>AWS Lambda (Python 3.12, boto3)</li>
+          <li>S3, SNS, CloudTrail</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Protocol note</h2>
+        <p class="text-xs text-slate-600 dark:text-slate-400">CLAUDE.md's research-first protocol is targeted at codebases with CI. This assignment produces written artifacts only, so tasks adopt a <strong>draft → rubric-check → commit</strong> loop instead of TDD. Frequent commits still apply.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+    <h2 class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Deliverables</h2>
+    <div class="grid sm:grid-cols-2 gap-1.5 text-xs font-mono">
+      <div>📄 <code>deliverables/01-ingestion-state-machine.asl.json</code></div>
+      <div>🐍 <code>deliverables/01-validate-checksum.py</code></div>
+      <div>🔐 <code>deliverables/02-kms-key-policy.json</code></div>
+      <div>📝 <code>deliverables/02-ghost-admin-defense.md</code></div>
+      <div>🛡️ <code>deliverables/02-scp-kms-guardrail.json</code></div>
+      <div>📝 <code>deliverables/03-data-skew-tech-note.md</code></div>
+      <div>⚡ <code>deliverables/03-glue-job-skeleton.py</code></div>
+      <div>🔄 <code>deliverables/04-rotate-weather-api-key.py</code></div>
+    </div>
+  </div>
+
+  <!-- ============== ARCHITECTURE DIAGRAM ============== -->
+  <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-800">
+    <h2 class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">End-to-end architecture</h2>
+    <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 p-4 overflow-auto">
+      <svg viewBox="0 0 1000 360" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" style="min-width: 720px;">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+          </marker>
+          <marker id="arr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#ef4444"/>
+          </marker>
+          <marker id="arr-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" fill="#10b981"/>
+          </marker>
+        </defs>
+        <style>
+          .a-box      { fill: currentColor; fill-opacity: 0.05; stroke: currentColor; stroke-opacity: 0.55; stroke-width: 1.2; }
+          .a-amber    { fill: #f59e0b; fill-opacity: 0.10; stroke: #f59e0b; stroke-width: 1.5; }
+          .a-indigo   { fill: #6366f1; fill-opacity: 0.13; stroke: #6366f1; stroke-width: 1.5; }
+          .a-red      { fill: #ef4444; fill-opacity: 0.10; stroke: #ef4444; stroke-width: 1.5; }
+          .a-emerald  { fill: #10b981; fill-opacity: 0.10; stroke: #10b981; stroke-width: 1.5; }
+          .a-purple   { fill: #a855f7; fill-opacity: 0.10; stroke: #a855f7; stroke-width: 1.5; stroke-dasharray: 5 3; }
+          .a-sky      { fill: #0ea5e9; fill-opacity: 0.10; stroke: #0ea5e9; stroke-width: 1.5; stroke-dasharray: 5 3; }
+          .a-lbl      { fill: currentColor; font: 600 13px ui-sans-serif, system-ui, sans-serif; }
+          .a-sub      { fill: currentColor; fill-opacity: 0.65; font: 500 10.5px ui-monospace, monospace; }
+          .a-arr      { stroke: currentColor; stroke-opacity: 0.55; stroke-width: 1.5; fill: none; marker-end: url(#arr); }
+          .a-arr-red  { stroke: #ef4444; stroke-width: 1.6; fill: none; marker-end: url(#arr-r); }
+          .a-arr-grn  { stroke: #10b981; stroke-width: 1.6; fill: none; marker-end: url(#arr-g); }
+          .a-tag      { fill: #a855f7; font: 700 12px ui-sans-serif, system-ui, sans-serif; }
+          .a-tag-sky  { fill: #0ea5e9; font: 700 12px ui-sans-serif, system-ui, sans-serif; }
+        </style>
+
+        <rect x="20"  y="125" width="110" height="58" rx="10" class="a-box"/>
+        <text x="75"  y="151" text-anchor="middle" class="a-lbl">Agencies</text>
+        <text x="75"  y="169" text-anchor="middle" class="a-sub">.zip + manifest</text>
+
+        <rect x="160" y="125" width="135" height="58" rx="10" class="a-amber"/>
+        <text x="227" y="151" text-anchor="middle" class="a-lbl">S3 Landing</text>
+        <text x="227" y="169" text-anchor="middle" class="a-sub">incident-landing-prod</text>
+
+        <rect x="335" y="105" width="200" height="98" rx="12" class="a-indigo"/>
+        <text x="435" y="134" text-anchor="middle" class="a-lbl">Step Functions</text>
+        <text x="435" y="155" text-anchor="middle" class="a-sub">Validate · Route · Glue</text>
+        <text x="435" y="175" text-anchor="middle" class="a-sub">retry · catch · .sync</text>
+        <line x1="345" y1="187" x2="525" y2="187" stroke="#6366f1" stroke-opacity="0.4" stroke-width="0.8"/>
+        <text x="435" y="197" text-anchor="middle" class="a-sub" style="fill:#6366f1;opacity:.85">md5 ▸ choice ▸ glue.sync</text>
+
+        <rect x="585" y="25"  width="170" height="55" rx="10" class="a-red"/>
+        <text x="670" y="51"  text-anchor="middle" class="a-lbl">S3 Quarantine</text>
+        <text x="670" y="68"  text-anchor="middle" class="a-sub">md5 mismatch</text>
+
+        <rect x="585" y="92"  width="170" height="55" rx="10" class="a-red"/>
+        <text x="670" y="118" text-anchor="middle" class="a-lbl">SNS Alerts</text>
+        <text x="670" y="135" text-anchor="middle" class="a-sub">incident-pipeline-alerts</text>
+
+        <rect x="585" y="159" width="170" height="55" rx="10" class="a-emerald"/>
+        <text x="670" y="185" text-anchor="middle" class="a-lbl">Glue (PySpark)</text>
+        <text x="670" y="202" text-anchor="middle" class="a-sub">round 3dp · Parquet</text>
+
+        <rect x="800" y="159" width="170" height="55" rx="10" class="a-emerald"/>
+        <text x="885" y="185" text-anchor="middle" class="a-lbl">S3 Curated</text>
+        <text x="885" y="202" text-anchor="middle" class="a-sub">Parquet · partitioned</text>
+
+        <line x1="130" y1="154" x2="160" y2="154" class="a-arr"/>
+        <line x1="295" y1="154" x2="335" y2="154" class="a-arr"/>
+        <path d="M535 130 C 560 80, 565 55, 585 53" class="a-arr-red"/>
+        <text x="552" y="83" class="a-sub" style="fill:#ef4444;font-weight:700">fail</text>
+        <path d="M535 145 C 555 115, 565 120, 585 120" class="a-arr-red"/>
+        <path d="M535 175 C 555 180, 565 187, 585 187" class="a-arr-grn"/>
+        <text x="552" y="172" class="a-sub" style="fill:#10b981;font-weight:700">pass</text>
+        <line x1="755" y1="187" x2="800" y2="187" class="a-arr-grn"/>
+
+        <rect x="160" y="245" width="810" height="40" rx="10" class="a-purple"/>
+        <text x="180" y="270" class="a-tag">🔐</text>
+        <text x="205" y="270" class="a-lbl">KMS Key</text>
+        <text x="280" y="270" class="a-sub">encrypts Landing + Curated · Glue role via service / BreakGlass MFA only · admin override blocked by SCP + explicit Deny</text>
+
+        <rect x="160" y="295" width="810" height="40" rx="10" class="a-sky"/>
+        <text x="180" y="320" class="a-tag-sky">🔄</text>
+        <text x="205" y="320" class="a-lbl">Secrets Manager</text>
+        <text x="320" y="320" class="a-sub">Weather API enrichment key · 4-step rotation Lambda · verifies new key before promoting AWSCURRENT</text>
+      </svg>
+    </div>
+    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2 italic">Red arrows = fail path · Green arrows = pass path · Purple/blue bars = cross-cutting concerns (encryption, secrets) that span the whole pipeline.</p>
+  </div>
+</section>
+
+<!-- ============== SPRINT BANNER ============== -->
+<section class="rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/60 dark:bg-indigo-950/30 p-4 flex items-center justify-between">
+  <div>
+    <div class="text-[11px] uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Sprint 1</div>
+    <div class="text-base font-semibold">Assignment Deliverables</div>
+  </div>
+  <div class="text-right text-xs text-indigo-700 dark:text-indigo-300">
+    <div>Estimate ~2.5 days</div>
+    <div>9 tasks · sequential critical path</div>
+  </div>
+</section>
+
+<!-- ============== PHASES ============== -->
+
+<!-- =========== Phase 0 =========== -->
+<section class="space-y-3">
+  <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <summary class="px-4 py-3 flex items-center gap-3">
+      <span class="chev text-slate-400">▶</span>
+      <div class="flex-1">
+        <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Phase 0</div>
+        <div class="text-sm font-semibold">Bootstrap workspace</div>
+      </div>
+      <span class="badge bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">1 task</span>
+    </summary>
+    <div class="px-4 pb-4 pt-2 space-y-3">
+
+      <!-- Task 1 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="1" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="1">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 1 · Bootstrap the workspace</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~15 min</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>~/regional-incident-data-lake/README.md</code></li>
+              <li>Create · <code>~/regional-incident-data-lake/.gitignore</code></li>
+            </ul>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Steps</div>
+            <ol class="list-decimal list-inside text-xs space-y-1">
+              <li>Write <code>README.md</code> with the index table mapping problems to artifacts.</li>
+              <li>Write minimal <code>.gitignore</code> (<code>__pycache__</code>, <code>.DS_Store</code>, <code>*.pyc</code>, <code>.venv/</code>).</li>
+              <li>Init git: <code class="bg-slate-200 dark:bg-slate-800 px-1 rounded">git init -b main &amp;&amp; git add . &amp;&amp; git commit -m "chore: bootstrap"</code></li>
+            </ol>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </details>
+</section>
+
+
+<!-- =========== Phase 1: Problem 1 =========== -->
+<section class="space-y-3">
+  <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <summary class="px-4 py-3 flex items-center gap-3">
+      <span class="chev text-slate-400">▶</span>
+      <div class="flex-1">
+        <div class="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Phase 1 · Problem 1</div>
+        <div class="text-sm font-semibold">Automated Ingestion Pipeline (Step Functions ASL)</div>
+      </div>
+      <span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">2 tasks</span>
+    </summary>
+    <div class="px-4 pb-4 pt-2 space-y-3">
+
+      <!-- VIZ: State machine flow -->
+      <div class="rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/15 p-4 overflow-auto">
+        <div class="text-xs uppercase tracking-wider text-emerald-700 dark:text-emerald-300 mb-3">State machine flow</div>
+        <svg viewBox="0 0 920 520" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" style="min-width: 720px;">
+          <defs>
+            <marker id="sm-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+            </marker>
+            <marker id="sm-arr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#ef4444"/>
+            </marker>
+            <marker id="sm-arr-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#10b981"/>
+            </marker>
+          </defs>
+          <style>
+            .s-task    { fill: #6366f1; fill-opacity: 0.12; stroke: #6366f1; stroke-width: 1.5; }
+            .s-glue    { fill: #10b981; fill-opacity: 0.12; stroke: #10b981; stroke-width: 1.5; }
+            .s-quar    { fill: #ef4444; fill-opacity: 0.10; stroke: #ef4444; stroke-width: 1.5; }
+            .s-succ    { fill: #10b981; fill-opacity: 0.18; stroke: #10b981; stroke-width: 2; }
+            .s-fail    { fill: #ef4444; fill-opacity: 0.18; stroke: #ef4444; stroke-width: 2; }
+            .s-choice  { fill: #f59e0b; fill-opacity: 0.14; stroke: #f59e0b; stroke-width: 1.5; }
+            .s-lbl     { fill: currentColor; font: 600 12.5px ui-sans-serif, system-ui, sans-serif; }
+            .s-sub     { fill: currentColor; fill-opacity: 0.7; font: 500 10.5px ui-monospace, monospace; }
+            .s-mini    { fill: currentColor; fill-opacity: 0.6; font: 500 10px ui-monospace, monospace; }
+            .s-arr     { stroke: currentColor; stroke-opacity: 0.55; stroke-width: 1.5; fill: none; marker-end: url(#sm-arr); }
+            .s-arr-r   { stroke: #ef4444; stroke-width: 1.6; fill: none; marker-end: url(#sm-arr-r); }
+            .s-arr-g   { stroke: #10b981; stroke-width: 1.6; fill: none; marker-end: url(#sm-arr-g); }
+            .s-edge    { fill: currentColor; font: 700 11px ui-sans-serif, system-ui, sans-serif; }
+          </style>
+
+          <rect x="330" y="20" width="260" height="58" rx="10" class="s-task"/>
+          <text x="460" y="44" text-anchor="middle" class="s-lbl">ValidateChecksum</text>
+          <text x="460" y="62" text-anchor="middle" class="s-sub">Lambda · retry × 4 · catch → Failure</text>
+
+          <polygon points="460,110 580,148 460,186 340,148" class="s-choice"/>
+          <text x="460" y="146" text-anchor="middle" class="s-lbl">ChecksumChoice</text>
+          <text x="460" y="163" text-anchor="middle" class="s-sub">$.validation.checksumValid</text>
+
+          <rect x="60" y="210" width="280" height="120" rx="10" class="s-quar"/>
+          <text x="200" y="234" text-anchor="middle" class="s-lbl">QuarantineParallel</text>
+          <line x1="80" y1="244" x2="320" y2="244" stroke="#ef4444" stroke-opacity="0.35"/>
+          <text x="200" y="262" text-anchor="middle" class="s-sub">┌ Branch A ──────────────┐</text>
+          <text x="200" y="278" text-anchor="middle" class="s-mini">aws-sdk:s3:copyObject → deleteObject</text>
+          <text x="200" y="297" text-anchor="middle" class="s-sub">┌ Branch B ──────────────┐</text>
+          <text x="200" y="313" text-anchor="middle" class="s-mini">sns:publish (alert topic)</text>
+
+          <rect x="80" y="358" width="240" height="50" rx="10" class="s-fail"/>
+          <text x="200" y="380" text-anchor="middle" class="s-lbl">ChecksumFailed</text>
+          <text x="200" y="396" text-anchor="middle" class="s-sub">Type: Fail (terminal)</text>
+
+          <rect x="580" y="210" width="260" height="50" rx="10" class="s-task"/>
+          <text x="710" y="232" text-anchor="middle" class="s-lbl">ExtractZip</text>
+          <text x="710" y="249" text-anchor="middle" class="s-sub">Lambda · retry × 4 · catch</text>
+
+          <rect x="540" y="280" width="340" height="70" rx="10" class="s-glue"/>
+          <text x="710" y="305" text-anchor="middle" class="s-lbl">StartGlueAnonymize</text>
+          <text x="710" y="322" text-anchor="middle" class="s-sub">glue:startJobRun.sync</text>
+          <text x="710" y="338" text-anchor="middle" class="s-sub">--gps_precision=3 · → Parquet</text>
+
+          <polygon points="710,370 830,408 710,446 590,408" class="s-choice"/>
+          <text x="710" y="406" text-anchor="middle" class="s-lbl">GlueResultChoice</text>
+          <text x="710" y="422" text-anchor="middle" class="s-sub">$.glue.JobRunState</text>
+
+          <rect x="580" y="470" width="260" height="40" rx="10" class="s-succ"/>
+          <text x="710" y="496" text-anchor="middle" class="s-lbl">IngestionSucceeded ✓</text>
+
+          <rect x="350" y="470" width="220" height="40" rx="10" class="s-fail"/>
+          <text x="460" y="496" text-anchor="middle" class="s-lbl">IngestionFailed ✗</text>
+
+          <line x1="460" y1="78" x2="460" y2="108" class="s-arr"/>
+          <path d="M380 168 C 300 195, 220 200, 200 208" class="s-arr-r"/>
+          <text x="270" y="195" class="s-edge" fill="#ef4444">false</text>
+          <path d="M540 168 C 620 195, 660 200, 690 210" class="s-arr-g"/>
+          <text x="615" y="195" class="s-edge" fill="#10b981">true</text>
+
+          <line x1="200" y1="330" x2="200" y2="358" class="s-arr-r"/>
+          <line x1="710" y1="260" x2="710" y2="278" class="s-arr"/>
+          <line x1="710" y1="350" x2="710" y2="368" class="s-arr"/>
+
+          <path d="M630 425 C 540 460, 500 465, 470 468" class="s-arr-r"/>
+          <text x="490" y="455" class="s-edge" fill="#ef4444">* (non-SUCCEEDED)</text>
+          <path d="M790 425 C 800 450, 770 465, 720 468" class="s-arr-g"/>
+          <text x="770" y="450" class="s-edge" fill="#10b981">SUCCEEDED</text>
+
+          <rect x="20" y="445" width="14" height="14" rx="2" fill="#10b981" fill-opacity="0.18" stroke="#10b981" stroke-width="1.5"/>
+          <text x="40" y="457" class="s-mini">success path</text>
+          <rect x="20" y="465" width="14" height="14" rx="2" fill="#ef4444" fill-opacity="0.18" stroke="#ef4444" stroke-width="1.5"/>
+          <text x="40" y="477" class="s-mini">failure path</text>
+          <rect x="20" y="485" width="14" height="14" rx="2" fill="#f59e0b" fill-opacity="0.14" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="40" y="497" class="s-mini">Choice state</text>
+        </svg>
+      </div>
+
+      <!-- Task 2 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="2" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="2">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 2 · Validate-Checksum Lambda (referenced by ASL)</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~1 hr</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <p class="text-xs">Write the Lambda first so the ASL's Resource ARNs and I/O shape are real, not placeholders. Streams the S3 object in 8 MiB chunks (Lambda memory safe), compares against the manifest, returns a strict result schema.</p>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>deliverables/01-validate-checksum.py</code></li>
+            </ul>
+          </div>
+          <details class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <summary class="px-3 py-2 text-xs flex items-center gap-2"><span class="chev text-slate-400">▶</span><span>Input / output schema</span></summary>
+            <div class="px-3 pb-3"><pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>{
+  "bucket": "incident-landing-prod",
+  "key":    "agency-a/2026-05-12/feed-001.zip",
+  "manifestKey": "agency-a/2026-05-12/feed-001.manifest.json"
+}
+→
+{
+  "bucket": "...", "key": "...", "manifestKey": "...",
+  "checksumValid": true,
+  "computedMd5": "d41d8cd98f00b204e9800998ecf8427e",
+  "expectedMd5": "d41d8cd98f00b204e9800998ecf8427e",
+  "sizeBytes":   1048576
+}</code></pre></div>
+          </details>
+          <details class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <summary class="px-3 py-2 text-xs flex items-center gap-2"><span class="chev text-slate-400">▶</span><span>Lambda source</span></summary>
+            <div class="px-3 pb-3"><pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>import hashlib, json, logging
+import boto3
+LOG = logging.getLogger(); LOG.setLevel(logging.INFO)
+s3 = boto3.client("s3")
+CHUNK = 8 * 1024 * 1024
+
+def _stream_md5(bucket, key):
+    body = s3.get_object(Bucket=bucket, Key=key)["Body"]
+    digest, total = hashlib.md5(), 0
+    for c in iter(lambda: body.read(CHUNK), b""):
+        digest.update(c); total += len(c)
+    return digest.hexdigest(), total
+
+def _load_manifest(bucket, key):
+    return json.loads(s3.get_object(Bucket=bucket, Key=key)["Body"].read())
+
+def lambda_handler(event, _ctx):
+    bucket, key, mkey = event["bucket"], event["key"], event["manifestKey"]
+    expected = _load_manifest(bucket, mkey)["md5"].lower()
+    computed, size = _stream_md5(bucket, key)
+    return {
+        "bucket": bucket, "key": key, "manifestKey": mkey,
+        "checksumValid": computed == expected,
+        "computedMd5": computed, "expectedMd5": expected,
+        "sizeBytes": size,
+    }</code></pre></div>
+          </details>
+        </div>
+      </article>
+
+      <!-- Task 3 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="3" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="3">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 3 · Step Functions ASL state machine</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~3 hrs</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>deliverables/01-ingestion-state-machine.asl.json</code></li>
+            </ul>
+          </div>
+
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">State machine shape</div>
+            <pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>ValidateChecksum (Lambda · retry · catch→Failure)
+   ├─ valid:false → QuarantineParallel
+   │                ├─ CopyToQuarantine → DeleteFromLanding   (aws-sdk:s3 direct)
+   │                └─ PublishQuarantineAlert                  (sns:publish direct)
+   │                → ChecksumFailed (Fail)
+   └─ valid:true  → ExtractZip (Lambda)
+                    → StartGlueAnonymize  (glue:startJobRun.sync, --gps_precision 3)
+                    → GlueResultChoice
+                       ├─ SUCCEEDED → IngestionSucceeded
+                       └─ *         → FailureNotification → IngestionFailed</code></pre>
+          </div>
+
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Key design decisions</div>
+            <ul class="list-disc list-inside text-xs space-y-1">
+              <li><code>glue:startJobRun.sync</code> blocks on Glue completion natively — no polling Lambda.</li>
+              <li>Optimized SDK integrations for S3 and SNS in the quarantine path — zero Lambda hops.</li>
+              <li><code>ResultPath</code> discipline: each task augments <code>$</code>, never replaces it, so <code>bucket</code>/<code>key</code> survive end-to-end.</li>
+              <li>Retries with exponential backoff on Lambda and Glue tasks; global <code>Catch</code> on <code>States.ALL</code> → <code>FailureNotification</code>.</li>
+            </ul>
+          </div>
+
+          <details class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <summary class="px-3 py-2 text-xs flex items-center gap-2"><span class="chev text-slate-400">▶</span><span>ASL JSON (full)</span></summary>
+            <div class="px-3 pb-3"><pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>{
+  "Comment": "Regional Incident Data Lake — Ingestion Pipeline...",
+  "StartAt": "ValidateChecksum",
+  "States": {
+    "ValidateChecksum": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:123456789012:function:ValidateChecksum",
+        "Payload": {
+          "bucket.$": "$.bucket",
+          "key.$": "$.key",
+          "manifestKey.$": "$.manifestKey"
+        }
+      },
+      "ResultSelector": {
+        "checksumValid.$": "$.Payload.checksumValid",
+        "computedMd5.$":   "$.Payload.computedMd5",
+        "expectedMd5.$":   "$.Payload.expectedMd5",
+        "sizeBytes.$":     "$.Payload.sizeBytes"
+      },
+      "ResultPath": "$.validation",
+      "Retry": [{
+        "ErrorEquals": ["Lambda.ServiceException","Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException","Lambda.TooManyRequestsException"],
+        "IntervalSeconds": 2, "MaxAttempts": 4, "BackoffRate": 2.0
+      }],
+      "Catch": [{ "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "FailureNotification" }],
+      "Next": "ChecksumChoice"
+    },
+    "ChecksumChoice": {
+      "Type": "Choice",
+      "Choices": [{ "Variable": "$.validation.checksumValid", "BooleanEquals": true, "Next": "ExtractZip" }],
+      "Default": "QuarantineParallel"
+    },
+    "QuarantineParallel": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "CopyToQuarantine",
+          "States": {
+            "CopyToQuarantine": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:s3:copyObject",
+              "Parameters": {
+                "Bucket": "incident-quarantine-prod",
+                "Key.$": "$.key",
+                "CopySource.$": "States.Format('{}/{}', $.bucket, $.key)"
+              },
+              "ResultPath": null, "Next": "DeleteFromLanding"
+            },
+            "DeleteFromLanding": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:s3:deleteObject",
+              "Parameters": { "Bucket.$": "$.bucket", "Key.$": "$.key" },
+              "ResultPath": null, "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "PublishQuarantineAlert",
+          "States": {
+            "PublishQuarantineAlert": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::sns:publish",
+              "Parameters": {
+                "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
+                "Subject": "Incident ingest quarantined: checksum mismatch",
+                "Message.$": "States.Format('File s3://{}/{} quarantined. Expected MD5 {}, computed {}.', $.bucket, $.key, $.validation.expectedMd5, $.validation.computedMd5)"
+              },
+              "End": true
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.quarantine", "Next": "ChecksumFailed"
+    },
+    "ChecksumFailed": {
+      "Type": "Fail", "Error": "ChecksumMismatch",
+      "Cause": "MD5 checksum did not match the manifest. File moved to incident-quarantine-prod."
+    },
+    "ExtractZip": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:123456789012:function:ExtractZip",
+        "Payload": { "bucket.$": "$.bucket", "key.$": "$.key" }
+      },
+      "ResultSelector": {
+        "extractedPrefix.$": "$.Payload.extractedPrefix",
+        "fileCount.$":       "$.Payload.fileCount"
+      },
+      "ResultPath": "$.extraction",
+      "Retry": [{
+        "ErrorEquals": ["Lambda.ServiceException","Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException","Lambda.TooManyRequestsException"],
+        "IntervalSeconds": 2, "MaxAttempts": 4, "BackoffRate": 2.0
+      }],
+      "Catch": [{ "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "FailureNotification" }],
+      "Next": "StartGlueAnonymize"
+    },
+    "StartGlueAnonymize": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "incident-anonymize-and-parquet",
+        "Arguments": {
+          "--source_bucket.$":  "$.bucket",
+          "--source_prefix.$":  "$.extraction.extractedPrefix",
+          "--target_bucket":    "incident-curated-prod",
+          "--target_prefix":    "curated/",
+          "--gps_precision":    "3"
+        }
+      },
+      "ResultPath": "$.glue",
+      "Retry": [{ "ErrorEquals": ["Glue.ConcurrentRunsExceededException"],
+                  "IntervalSeconds": 30, "MaxAttempts": 3, "BackoffRate": 2.0 }],
+      "Catch": [{ "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "FailureNotification" }],
+      "Next": "GlueResultChoice"
+    },
+    "GlueResultChoice": {
+      "Type": "Choice",
+      "Choices": [{ "Variable": "$.glue.JobRunState", "StringEquals": "SUCCEEDED", "Next": "IngestionSucceeded" }],
+      "Default": "FailureNotification"
+    },
+    "FailureNotification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-1:123456789012:incident-pipeline-alerts",
+        "Subject": "Incident ingest FAILED",
+        "Message.$": "States.JsonToString($)"
+      },
+      "ResultPath": "$.notification", "Next": "IngestionFailed"
+    },
+    "IngestionFailed":   { "Type": "Fail", "Error": "IngestionFailed",
+                           "Cause": "See SNS topic incident-pipeline-alerts and execution input for details." },
+    "IngestionSucceeded":{ "Type": "Succeed" }
+  }
+}</code></pre></div>
+          </details>
+
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Rubric coverage</div>
+            <ul class="text-xs space-y-0.5">
+              <li>✅ MD5 vs manifest → <code>ValidateChecksum</code></li>
+              <li>✅ Failed-check → Quarantine bucket → <code>CopyToQuarantine</code> + <code>DeleteFromLanding</code></li>
+              <li>✅ Failed-check → SNS alert → <code>PublishQuarantineAlert</code></li>
+              <li>✅ Glue 3-dp rounding + Parquet → <code>StartGlueAnonymize</code> with <code>--gps_precision 3</code></li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </details>
+</section>
+
+
+<!-- =========== Phase 2: Problem 2 =========== -->
+<section class="space-y-3">
+  <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <summary class="px-4 py-3 flex items-center gap-3">
+      <span class="chev text-slate-400">▶</span>
+      <div class="flex-1">
+        <div class="text-[11px] uppercase tracking-wider text-amber-600 dark:text-amber-400">Phase 2 · Problem 2</div>
+        <div class="text-sm font-semibold">Ghost Admin Defense (KMS + SCP)</div>
+      </div>
+      <span class="badge bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">2 tasks</span>
+    </summary>
+    <div class="px-4 pb-4 pt-2 space-y-3">
+
+      <!-- VIZ: Defense layers + access matrix -->
+      <div class="rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/15 p-4">
+        <div class="text-xs uppercase tracking-wider text-amber-700 dark:text-amber-300 mb-3">Defense in depth — outer ring stops attacks the inner rings can't</div>
+        <div class="grid lg:grid-cols-5 gap-4">
+
+          <div class="lg:col-span-3 space-y-2">
+            <div class="rounded-lg border-l-4 border-emerald-500 bg-white dark:bg-slate-900 p-3 shadow-sm">
+              <div class="flex items-center gap-2"><span class="text-[10px] font-mono bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded">L4</span><div class="text-xs font-semibold text-slate-800 dark:text-slate-100">Detective controls</div></div>
+              <div class="text-[12px] text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">CloudTrail + EventBridge on <code class="text-[11px]">kms:PutKeyPolicy</code> → SNS + PagerDuty. AWS Config drift auto-remediation. SCP also denies <code class="text-[11px]">cloudtrail:StopLogging</code> so admins can't blind the audit trail first.</div>
+            </div>
+
+            <div class="rounded-lg border-l-4 border-purple-500 bg-white dark:bg-slate-900 p-3 shadow-sm">
+              <div class="flex items-center gap-2"><span class="text-[10px] font-mono bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded">L3</span><div class="text-xs font-semibold text-slate-800 dark:text-slate-100">Root isolation</div></div>
+              <div class="text-[12px] text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">Hardware MFA on root, credentials sealed, no programmatic keys. OU-level SCP denies actions when principal = root, except a tiny allowlist (billing, Identity Center).</div>
+            </div>
+
+            <div class="rounded-lg border-l-4 border-amber-500 bg-white dark:bg-slate-900 p-3 shadow-sm relative">
+              <span class="absolute top-2 right-2 text-[9px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full">★ real backstop</span>
+              <div class="flex items-center gap-2"><span class="text-[10px] font-mono bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded">L2</span><div class="text-xs font-semibold text-slate-800 dark:text-slate-100">Organizations SCP</div></div>
+              <div class="text-[12px] text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">Denies <code class="text-[11px]">kms:PutKeyPolicy</code>, <code class="text-[11px]">kms:ScheduleKeyDeletion</code>, grants — to everyone but <code class="text-[11px]">KmsKeyAdmin</code>. <strong>Account admins cannot override SCPs</strong> — only the Org management account can, and that lives in a separate account.</div>
+            </div>
+
+            <div class="rounded-lg border-l-4 border-red-500 bg-white dark:bg-slate-900 p-3 shadow-sm">
+              <div class="flex items-center gap-2"><span class="text-[10px] font-mono bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-1.5 py-0.5 rounded">L1</span><div class="text-xs font-semibold text-slate-800 dark:text-slate-100">KMS Key Policy — explicit Deny</div></div>
+              <div class="text-[12px] text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">Explicit <code class="text-[11px]">Deny kms:Decrypt</code> beats <code class="text-[11px]">AdministratorAccess</code> Allow. Carve-outs: Glue role under <code class="text-[11px]">kms:ViaService</code>, BreakGlass role under MFA &lt; 15 min.</div>
+            </div>
+
+            <div class="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-3 text-center bg-slate-50 dark:bg-slate-900/50">
+              <span class="text-xs text-slate-500 dark:text-slate-400">🔒 Encrypted raw incident data</span>
+            </div>
+          </div>
+
+          <div class="lg:col-span-2 space-y-3">
+            <div>
+              <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Who can <code>kms:Decrypt</code>?</div>
+              <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden text-xs">
+                <table class="w-full">
+                  <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px]">
+                    <tr><th class="text-left px-3 py-1.5 font-medium">Principal</th><th class="text-center px-2 py-1.5 font-medium w-16">Allowed</th></tr>
+                  </thead>
+                  <tbody class="[&amp;_tr]:border-t [&amp;_tr]:border-slate-100 dark:[&amp;_tr]:border-slate-800/60">
+                    <tr><td class="px-3 py-1.5"><div>GlueIngestionRole</div><div class="text-[10px] text-slate-500">via service + context</div></td><td class="text-center text-emerald-600 dark:text-emerald-400 font-bold">✓</td></tr>
+                    <tr><td class="px-3 py-1.5"><div>BreakGlassDataAccess</div><div class="text-[10px] text-slate-500">MFA &lt; 15 min</div></td><td class="text-center text-emerald-600 dark:text-emerald-400 font-bold">✓</td></tr>
+                    <tr class="bg-red-50/40 dark:bg-red-950/15"><td class="px-3 py-1.5"><div>AdministratorAccess</div><div class="text-[10px] text-slate-500">any other principal</div></td><td class="text-center text-red-500 font-bold">✗</td></tr>
+                    <tr class="bg-red-50/40 dark:bg-red-950/15"><td class="px-3 py-1.5"><div>Account Root</div><div class="text-[10px] text-slate-500">read-only describe</div></td><td class="text-center text-red-500 font-bold">✗</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">The kill-chain we block</div>
+              <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-[11px] space-y-1.5">
+                <div class="flex items-start gap-2"><span class="text-red-500 font-bold">①</span><span class="text-slate-600 dark:text-slate-300">Admin tries <code>kms:Decrypt</code> → blocked by L1 explicit Deny</span></div>
+                <div class="flex items-start gap-2"><span class="text-red-500 font-bold">②</span><span class="text-slate-600 dark:text-slate-300">Admin tries <code>kms:PutKeyPolicy</code> to rewrite L1 → blocked by L1 + L2 SCP</span></div>
+                <div class="flex items-start gap-2"><span class="text-red-500 font-bold">③</span><span class="text-slate-600 dark:text-slate-300">Admin tries <code>cloudtrail:StopLogging</code> before tampering → blocked by L2 SCP</span></div>
+                <div class="flex items-start gap-2"><span class="text-red-500 font-bold">④</span><span class="text-slate-600 dark:text-slate-300">Admin assumes BreakGlass without MFA → condition fails, alert fires (L4)</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Task 4 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="4" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="4">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 4 · KMS Key Policy</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~2 hrs</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>deliverables/02-kms-key-policy.json</code></li>
+            </ul>
+          </div>
+
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Policy statements (logical)</div>
+            <ol class="list-decimal list-inside text-xs space-y-1">
+              <li><strong>EnableLimitedRootAccess</strong> — root gets describe/list only (AWS forbids fully locking root out).</li>
+              <li><strong>AllowKeyAdminOnlyByKmsKeyAdminWithMFA</strong> — only <code>KmsKeyAdmin</code> role with fresh (&lt;15 min) MFA can edit the key policy.</li>
+              <li><strong>AllowGlueDecryptViaService</strong> — Glue role can <code>Decrypt</code>/<code>GenerateDataKey</code>, gated on <code>kms:ViaService = glue.<i>region</i>.amazonaws.com</code> + matching encryption context.</li>
+              <li><strong>AllowBreakGlassDecryptWithMFA</strong> — <code>BreakGlassDataAccess</code> role with MFA, last 15 minutes.</li>
+              <li><strong>DenyDecryptToEveryoneElse</strong> — explicit <code>Deny kms:Decrypt</code> to all principals not in {Glue, BreakGlass}. Beats <code>AdministratorAccess</code>.</li>
+              <li><strong>DenyKeyPolicyTampering</strong> — explicit <code>Deny</code> on <code>kms:PutKeyPolicy</code>, <code>kms:Schedule/DisableKey</code>, grants — to all but KmsKeyAdmin.</li>
+              <li><strong>DenyKeyPolicyTamperingWithoutMFA</strong> — same, but unconditional on missing MFA.</li>
+            </ol>
+          </div>
+
+          <details class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <summary class="px-3 py-2 text-xs flex items-center gap-2"><span class="chev text-slate-400">▶</span><span>Key Policy JSON (full)</span></summary>
+            <div class="px-3 pb-3"><pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>{
+  "Version": "2012-10-17",
+  "Id": "incident-data-lake-key-policy",
+  "Statement": [
+    {
+      "Sid": "EnableLimitedRootAccess",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:root" },
+      "Action": [
+        "kms:DescribeKey","kms:GetKeyPolicy","kms:GetKeyRotationStatus",
+        "kms:ListAliases","kms:ListGrants","kms:ListKeyPolicies","kms:ListResourceTags"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowKeyAdministrationOnlyByKmsKeyAdminWithMFA",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:role/KmsKeyAdmin" },
+      "Action": [
+        "kms:PutKeyPolicy","kms:TagResource","kms:UntagResource","kms:UpdateAlias",
+        "kms:UpdateKeyDescription","kms:EnableKeyRotation","kms:DisableKeyRotation"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Bool":            { "aws:MultiFactorAuthPresent": "true" },
+        "NumericLessThan": { "aws:MultiFactorAuthAge":     "900"  }
+      }
+    },
+    {
+      "Sid": "AllowGlueDecryptViaService",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:role/GlueIngestionRole" },
+      "Action": [
+        "kms:Decrypt","kms:GenerateDataKey","kms:GenerateDataKeyWithoutPlaintext","kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService":                "glue.us-east-1.amazonaws.com",
+          "kms:EncryptionContext:project": "incident-data-lake"
+        }
+      }
+    },
+    {
+      "Sid": "AllowBreakGlassDecryptWithMFA",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::123456789012:role/BreakGlassDataAccess" },
+      "Action": [ "kms:Decrypt","kms:DescribeKey" ],
+      "Resource": "*",
+      "Condition": {
+        "Bool":            { "aws:MultiFactorAuthPresent": "true" },
+        "NumericLessThan": { "aws:MultiFactorAuthAge":     "900"  }
+      }
+    },
+    {
+      "Sid": "DenyDecryptToEveryoneElse",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "kms:Decrypt",
+      "Resource": "*",
+      "Condition": {
+        "ArnNotEquals": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::123456789012:role/GlueIngestionRole",
+            "arn:aws:iam::123456789012:role/BreakGlassDataAccess"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyKeyPolicyTampering",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": [
+        "kms:PutKeyPolicy","kms:DeleteAlias","kms:DisableKey",
+        "kms:ScheduleKeyDeletion","kms:CancelKeyDeletion",
+        "kms:CreateGrant","kms:RetireGrant","kms:RevokeGrant"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "ArnNotEquals": { "aws:PrincipalArn": "arn:aws:iam::123456789012:role/KmsKeyAdmin" }
+      }
+    },
+    {
+      "Sid": "DenyKeyPolicyTamperingWithoutMFA",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": [ "kms:PutKeyPolicy","kms:ScheduleKeyDeletion" ],
+      "Resource": "*",
+      "Condition": {
+        "BoolIfExists":               { "aws:MultiFactorAuthPresent": "false" },
+        "NumericGreaterThanIfExists": { "aws:MultiFactorAuthAge":     "900"   }
+      }
+    }
+  ]
+}</code></pre></div>
+          </details>
+        </div>
+      </article>
+
+      <!-- Task 5 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="5" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="5">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 5 · Ghost Admin defense write-up + SCP backstop</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~1.5 hrs</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <p class="text-xs">The key policy alone is <em>not</em> enough: an admin with <code>kms:PutKeyPolicy</code> could overwrite it. The real backstop is an Organizations-level Service Control Policy plus detective controls. Document the four layers and ship the SCP.</p>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>deliverables/02-ghost-admin-defense.md</code></li>
+              <li>Create · <code>deliverables/02-scp-kms-guardrail.json</code></li>
+            </ul>
+          </div>
+
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Defense, in four layers</div>
+            <ol class="list-decimal list-inside text-xs space-y-1">
+              <li><strong>Key policy explicit Deny</strong> — defeats <code>AdministratorAccess</code> Allow.</li>
+              <li><strong>Organizations SCP</strong> — denies <code>kms:PutKeyPolicy</code> etc. for everyone but <code>KmsKeyAdmin</code>. <em>An account admin cannot override an SCP.</em> This is the real defense.</li>
+              <li><strong>Root account isolation</strong> — hardware MFA, sealed envelope, SCP at OU denies actions from root.</li>
+              <li><strong>Detective controls</strong> — CloudTrail + EventBridge on <code>kms:PutKeyPolicy</code> → SNS + PagerDuty; AWS Config rule with auto-remediation; SCP also denies <code>cloudtrail:StopLogging</code>.</li>
+            </ol>
+          </div>
+
+          <details class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <summary class="px-3 py-2 text-xs flex items-center gap-2"><span class="chev text-slate-400">▶</span><span>SCP JSON</span></summary>
+            <div class="px-3 pb-3"><pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyKmsKeyPolicyTamperingOrgWide",
+      "Effect": "Deny",
+      "Action": [
+        "kms:PutKeyPolicy","kms:ScheduleKeyDeletion","kms:DisableKey","kms:CreateGrant"
+      ],
+      "Resource": "arn:aws:kms:*:123456789012:key/*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "aws:PrincipalARN": "arn:aws:iam::123456789012:role/KmsKeyAdmin"
+        }
+      }
+    },
+    {
+      "Sid": "DenyDisablingCloudTrail",
+      "Effect": "Deny",
+      "Action": [
+        "cloudtrail:StopLogging","cloudtrail:DeleteTrail",
+        "cloudtrail:UpdateTrail","cloudtrail:PutEventSelectors"
+      ],
+      "Resource": "*"
+    }
+  ]
+}</code></pre></div>
+          </details>
+        </div>
+      </article>
+
+    </div>
+  </details>
+</section>
+
+
+<!-- =========== Phase 3: Problem 3 =========== -->
+<section class="space-y-3">
+  <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <summary class="px-4 py-3 flex items-center gap-3">
+      <span class="chev text-slate-400">▶</span>
+      <div class="flex-1">
+        <div class="text-[11px] uppercase tracking-wider text-purple-600 dark:text-purple-400">Phase 3 · Problem 3</div>
+        <div class="text-sm font-semibold">Data Skew Optimization (PySpark / Glue)</div>
+      </div>
+      <span class="badge bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">2 tasks</span>
+    </summary>
+    <div class="px-4 pb-4 pt-2 space-y-3">
+
+      <!-- VIZ: Skew before/after + salting flow -->
+      <div class="rounded-lg border border-purple-200 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/15 p-4 space-y-4">
+        <div class="text-xs uppercase tracking-wider text-purple-700 dark:text-purple-300">Partition load distribution</div>
+
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="rounded-lg border border-red-200 dark:border-red-900/40 bg-white dark:bg-slate-900 p-4">
+            <div class="flex items-center justify-between mb-1">
+              <div class="text-xs font-semibold text-red-700 dark:text-red-300">Before · HashPartitioner</div>
+              <span class="text-[10px] font-mono text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-950/60 px-1.5 py-0.5 rounded">OOM</span>
+            </div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 mb-3">one intersection_id ⇒ one partition</div>
+            <div class="flex items-end gap-1 h-32 border-b border-slate-200 dark:border-slate-700">
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 8%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 5%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 11%"></div>
+              <div class="flex-1 bg-red-500 rounded-t flex items-start justify-center pt-1 relative" style="height: 100%">
+                <span class="text-[10px] text-white font-bold">10M</span>
+                <span class="absolute -top-4 text-[10px] text-red-600 dark:text-red-400 font-bold">▼ hot</span>
+              </div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 7%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 9%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 5%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 8%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 6%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 10%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 4%"></div>
+              <div class="flex-1 bg-slate-400/60 dark:bg-slate-500/60 rounded-t" style="height: 7%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>partitions →</span><span>peak: &gt;12 GB</span></div>
+          </div>
+
+          <div class="rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-slate-900 p-4">
+            <div class="flex items-center justify-between mb-1">
+              <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-300">After · 64-bucket salted aggregation</div>
+              <span class="text-[10px] font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">runs ✓</span>
+            </div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 mb-3">salt-suffixed key spreads across executors</div>
+            <div class="flex items-end gap-1 h-32 border-b border-slate-200 dark:border-slate-700">
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 38%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 42%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 35%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 45%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 41%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 39%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 43%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 36%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 44%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 40%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 37%"></div>
+              <div class="flex-1 bg-emerald-500/80 rounded-t" style="height: 42%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>partitions →</span><span>peak: &lt;2 GB</span></div>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+          <div class="text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">How the two-stage salted aggregation works</div>
+          <svg viewBox="0 0 920 220" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" style="min-width: 700px;">
+            <defs>
+              <marker id="sk-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/>
+              </marker>
+            </defs>
+            <style>
+              .k-raw  { fill: #ef4444; fill-opacity: 0.10; stroke: #ef4444; stroke-width: 1.5; }
+              .k-mid  { fill: #f59e0b; fill-opacity: 0.10; stroke: #f59e0b; stroke-width: 1.5; }
+              .k-fin  { fill: #10b981; fill-opacity: 0.12; stroke: #10b981; stroke-width: 1.5; }
+              .k-lbl  { fill: currentColor; font: 600 12.5px ui-sans-serif, system-ui, sans-serif; }
+              .k-sub  { fill: currentColor; fill-opacity: 0.7; font: 500 10.5px ui-monospace, monospace; }
+              .k-arr  { stroke: currentColor; stroke-opacity: 0.55; stroke-width: 1.5; fill: none; marker-end: url(#sk-arr); }
+              .k-step { fill: currentColor; fill-opacity: 0.5; font: 700 10px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.05em; }
+            </style>
+
+            <text x="80"  y="20" class="k-step">① RAW</text>
+            <rect x="20"  y="30" width="180" height="160" rx="10" class="k-raw"/>
+            <text x="110" y="55"  text-anchor="middle" class="k-lbl">10M rows</text>
+            <text x="110" y="73"  text-anchor="middle" class="k-sub">intersection_id = "A"</text>
+            <text x="110" y="100" text-anchor="middle" class="k-sub">— one shuffle key —</text>
+            <text x="110" y="125" text-anchor="middle" class="k-sub">↓ default partitioning</text>
+            <text x="110" y="145" text-anchor="middle" class="k-sub">→ 1 hot partition</text>
+            <text x="110" y="170" text-anchor="middle" class="k-sub" fill="#ef4444">OOM on executor</text>
+
+            <text x="280" y="20" class="k-step">② SALT</text>
+            <rect x="240" y="30" width="200" height="160" rx="10" class="k-mid"/>
+            <text x="340" y="55"  text-anchor="middle" class="k-lbl">Add _salt ∈ 0..63</text>
+            <text x="340" y="74"  text-anchor="middle" class="k-sub">df.withColumn(</text>
+            <text x="340" y="89"  text-anchor="middle" class="k-sub">  "_salt",</text>
+            <text x="340" y="104" text-anchor="middle" class="k-sub">  (F.rand()*64).cast(int))</text>
+            <text x="340" y="135" text-anchor="middle" class="k-sub">groupBy(intersection_id,</text>
+            <text x="340" y="150" text-anchor="middle" class="k-sub">         _salt)</text>
+            <text x="340" y="175" text-anchor="middle" class="k-sub" fill="#f59e0b">→ 64 partial rows</text>
+
+            <text x="500" y="20" class="k-step">③ FINAL</text>
+            <rect x="460" y="30" width="200" height="160" rx="10" class="k-fin"/>
+            <text x="560" y="55"  text-anchor="middle" class="k-lbl">Strip salt</text>
+            <text x="560" y="74"  text-anchor="middle" class="k-sub">groupBy(intersection_id)</text>
+            <text x="560" y="89"  text-anchor="middle" class="k-sub">  .sum(partial_count)</text>
+            <text x="560" y="120" text-anchor="middle" class="k-sub">— shuffles only 64 rows</text>
+            <text x="560" y="135" text-anchor="middle" class="k-sub">  per hot key —</text>
+            <text x="560" y="170" text-anchor="middle" class="k-sub" fill="#10b981">1 final row per intersection</text>
+
+            <text x="780" y="20" class="k-step">④ WRITE</text>
+            <rect x="680" y="30" width="220" height="160" rx="10" class="k-fin"/>
+            <text x="790" y="55"  text-anchor="middle" class="k-lbl">Parquet output</text>
+            <text x="790" y="74"  text-anchor="middle" class="k-sub">.repartition(400,</text>
+            <text x="790" y="89"  text-anchor="middle" class="k-sub">  region, date, hour,</text>
+            <text x="790" y="104" text-anchor="middle" class="k-sub">  intersection_id)</text>
+            <text x="790" y="135" text-anchor="middle" class="k-sub">.partitionBy(</text>
+            <text x="790" y="150" text-anchor="middle" class="k-sub">  region, date, hour)</text>
+            <text x="790" y="175" text-anchor="middle" class="k-sub" fill="#10b981">no write-time fan-out</text>
+
+            <line x1="200" y1="105" x2="240" y2="105" class="k-arr"/>
+            <line x1="440" y1="105" x2="460" y2="105" class="k-arr"/>
+            <line x1="660" y1="105" x2="680" y2="105" class="k-arr"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Task 6 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="6" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="6">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 6 · Glue job skeleton (skew-resilient)</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~2 hrs</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>deliverables/03-glue-job-skeleton.py</code></li>
+            </ul>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Three orthogonal fixes</div>
+            <ul class="list-disc list-inside text-xs space-y-1">
+              <li><strong>Spark AQE with skew-join</strong> — splits skewed partitions at runtime (5× median, 256 MB threshold).</li>
+              <li><strong>Two-stage salted aggregation</strong> — salt hot key with 64 random buckets, aggregate twice. Converts one hot partition into 64 balanced ones.</li>
+              <li><strong>Output partition by time only</strong> — never <code>partitionBy("intersection_id")</code>; pre-shuffle on a fine spatial hash before writing.</li>
+            </ul>
+          </div>
+          <details class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <summary class="px-3 py-2 text-xs flex items-center gap-2"><span class="chev text-slate-400">▶</span><span>Salted aggregator (excerpt)</span></summary>
+            <div class="px-3 pb-3"><pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>spark.conf.set("spark.sql.adaptive.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.enabled", "true")
+spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionFactor", "5")
+spark.conf.set("spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes", "268435456")
+
+SALT = 64
+
+def aggregate_salted(df):
+    salted = df.withColumn("_salt", (F.rand(seed=1729) * SALT).cast("int"))
+    stage1 = salted.groupBy("intersection_id", "_salt").agg(
+        F.count("*").alias("partial_pings"),
+        F.avg("lat").alias("partial_lat"),
+        F.avg("lon").alias("partial_lon"),
+    )
+    return stage1.groupBy("intersection_id").agg(
+        F.sum("partial_pings").alias("ping_count"),
+        F.avg("partial_lat").alias("centroid_lat"),
+        F.avg("partial_lon").alias("centroid_lon"),
+    )
+
+write_ready = (
+    df.withColumn("lat", F.round("lat", 3))
+      .withColumn("lon", F.round("lon", 3))
+      .withColumn("event_date", F.to_date("event_ts"))
+      .withColumn("event_hour", F.hour("event_ts"))
+      .repartition(400, "region", "event_date", "event_hour", "intersection_id")
+)
+write_ready.write.mode("append")\
+    .partitionBy("region", "event_date", "event_hour")\
+    .parquet(TARGET)</code></pre></div>
+          </details>
+        </div>
+      </article>
+
+      <!-- Task 7 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="7" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="7">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 7 · One-page technical note</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~2 hrs</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>deliverables/03-data-skew-tech-note.md</code></li>
+            </ul>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Note structure</div>
+            <ol class="list-decimal list-inside text-xs space-y-1">
+              <li><strong>Symptom</strong> — 10M pings on one intersection_id ⇒ one shuffle partition OOMs while the rest sit idle.</li>
+              <li><strong>Root cause</strong> — default <code>HashPartitioner</code> sends a key to a single partition regardless of cluster size. Worst-case partition is unbounded in n.</li>
+              <li><strong>Fix 1 · AQE</strong> with skew-join (config snippet inline).</li>
+              <li><strong>Fix 2 · Two-stage salted aggregation</strong> with code excerpt referencing <code>03-glue-job-skeleton.py</code>.</li>
+              <li><strong>Fix 3 · Output partitioning</strong> by time + region only; pre-write repartition on a finer spatial hash.</li>
+              <li><strong>Rejected approaches</strong> — broadcast join (wrong query type), bumping <code>spark.sql.shuffle.partitions</code> (still one hot partition), file splitting (data skew not file skew), manual hot-key carve-out (ops burden).</li>
+              <li><strong>Result</strong> — runs on existing G.1X / 10-worker; peak executor memory drops from &gt;12 GB to &lt;2 GB.</li>
+            </ol>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </details>
+</section>
+
+
+<!-- =========== Phase 4: Problem 4 =========== -->
+<section class="space-y-3">
+  <details open class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <summary class="px-4 py-3 flex items-center gap-3">
+      <span class="chev text-slate-400">▶</span>
+      <div class="flex-1">
+        <div class="text-[11px] uppercase tracking-wider text-sky-600 dark:text-sky-400">Phase 4 · Problem 4</div>
+        <div class="text-sm font-semibold">Secrets Manager Rotation Lambda</div>
+      </div>
+      <span class="badge bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300">1 task</span>
+    </summary>
+    <div class="px-4 pb-4 pt-2 space-y-3">
+
+      <!-- VIZ: Rotation 4-step timeline -->
+      <div class="rounded-lg border border-sky-200 dark:border-sky-900/40 bg-sky-50/40 dark:bg-sky-950/15 p-4 space-y-4">
+        <div class="text-xs uppercase tracking-wider text-sky-700 dark:text-sky-300">Rotation timeline · AWSCURRENT never moves until verification passes</div>
+
+        <div class="grid grid-cols-[80px_repeat(4,1fr)] gap-2 items-stretch">
+          <div></div>
+          <div class="text-[11px] text-center"><div class="font-semibold text-sky-700 dark:text-sky-300">createSecret</div><div class="text-[10px] text-slate-500">issue new key via admin API</div></div>
+          <div class="text-[11px] text-center"><div class="font-semibold text-sky-700 dark:text-sky-300">setSecret</div><div class="text-[10px] text-slate-500">no-op</div></div>
+          <div class="text-[11px] text-center"><div class="font-semibold text-sky-700 dark:text-sky-300">testSecret</div><div class="text-[10px] text-slate-500">live API call ✓</div></div>
+          <div class="text-[11px] text-center"><div class="font-semibold text-sky-700 dark:text-sky-300">finishSecret</div><div class="text-[10px] text-slate-500">promote + revoke old</div></div>
+
+          <div class="text-[11px] font-mono text-slate-600 dark:text-slate-400 self-center text-right pr-1">AWSCURRENT</div>
+          <div class="bg-emerald-500/25 border border-emerald-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">v1 (live)</div>
+          <div class="bg-emerald-500/25 border border-emerald-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">v1 (live)</div>
+          <div class="bg-emerald-500/25 border border-emerald-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">v1 (live)</div>
+          <div class="bg-emerald-600/40 border border-emerald-600 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-emerald-900 dark:text-emerald-100">→ v2 (live)</div>
+
+          <div class="text-[11px] font-mono text-slate-600 dark:text-slate-400 self-center text-right pr-1">AWSPENDING</div>
+          <div class="bg-amber-500/25 border border-amber-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-amber-800 dark:text-amber-200">v2 (issued)</div>
+          <div class="bg-amber-500/25 border border-amber-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-amber-800 dark:text-amber-200">v2 (held)</div>
+          <div class="bg-amber-500/25 border border-amber-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-amber-800 dark:text-amber-200">v2 (verifying)</div>
+          <div class="bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 border-dashed rounded flex items-center justify-center px-2 h-9 text-[11px] text-slate-500">—</div>
+
+          <div class="text-[11px] font-mono text-slate-600 dark:text-slate-400 self-center text-right pr-1">Live API</div>
+          <div class="border border-dashed border-slate-300 dark:border-slate-700 rounded flex items-center justify-center px-2 h-9 text-[11px] text-slate-500">—</div>
+          <div class="border border-dashed border-slate-300 dark:border-slate-700 rounded flex items-center justify-center px-2 h-9 text-[11px] text-slate-500">—</div>
+          <div class="bg-indigo-500/25 border border-indigo-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-indigo-800 dark:text-indigo-200">GET /v1/current → 200 ✓</div>
+          <div class="bg-red-500/20 border border-red-500/50 rounded flex items-center justify-center px-2 h-9 text-[11px] font-semibold text-red-700 dark:text-red-300">DELETE /keys/v1 (revoke)</div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-3 text-[12px]">
+          <div class="rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-white dark:bg-slate-900 p-3">
+            <div class="font-semibold text-emerald-700 dark:text-emerald-300 mb-1">✓ Safety properties</div>
+            <ul class="space-y-1 text-slate-600 dark:text-slate-300 list-disc list-inside">
+              <li><code>AWSCURRENT</code> only moves in <code>finishSecret</code> — after verification.</li>
+              <li>Each step is idempotent (Secrets Manager retries).</li>
+              <li>Failed revocation does not roll back rotation (new key already works).</li>
+            </ul>
+          </div>
+          <div class="rounded-lg border border-red-200 dark:border-red-900/40 bg-white dark:bg-slate-900 p-3">
+            <div class="font-semibold text-red-700 dark:text-red-300 mb-1">✗ Failure scenarios</div>
+            <ul class="space-y-1 text-slate-600 dark:text-slate-300 list-disc list-inside">
+              <li><code>testSecret</code> returns 401 → exception → Secrets Manager retries; <code>v1</code> keeps serving.</li>
+              <li>Admin API down during <code>createSecret</code> → retried later; no state change.</li>
+              <li>Lambda timeout mid-step → next invocation finds the same staging label, no-ops.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Task 8 -->
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="8" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="8">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 8 · Rotation Lambda (verify-before-promote)</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~2.5 hrs</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Files</div>
+            <ul class="text-xs font-mono space-y-0.5">
+              <li>Create · <code>deliverables/04-rotate-weather-api-key.py</code></li>
+            </ul>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Four-step contract</div>
+            <ol class="list-decimal list-inside text-xs space-y-1">
+              <li><strong>createSecret</strong> — call Weather admin <code>POST /keys</code> with admin bearer (separate secret), stash result as <code>AWSPENDING</code>.</li>
+              <li><strong>setSecret</strong> — no-op; the API tracks the key from creation.</li>
+              <li><strong>testSecret</strong> — call live <code>GET /v1/current</code> with the pending key; abort on non-200.</li>
+              <li><strong>finishSecret</strong> — move <code>AWSCURRENT</code> from old → new <em>only after</em> testSecret passed, then revoke old key on the admin API.</li>
+            </ol>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Safety properties</div>
+            <ul class="list-disc list-inside text-xs space-y-1">
+              <li><code>AWSCURRENT</code> never moves until verification passes — the old key keeps serving prod traffic.</li>
+              <li>Every step is idempotent (Secrets Manager will retry).</li>
+              <li>Old-key revocation failures don't roll back rotation (the new key already works).</li>
+            </ul>
+          </div>
+          <details class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <summary class="px-3 py-2 text-xs flex items-center gap-2"><span class="chev text-slate-400">▶</span><span>Lambda source (key excerpts)</span></summary>
+            <div class="px-3 pb-3"><pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>def test_secret(arn, token):
+    pending = json.loads(sm.get_secret_value(
+        SecretId=arn, VersionId=token, VersionStage="AWSPENDING"
+    )["SecretString"])
+    resp = http.request("GET", f"{WEATHER_API_URL}/v1/current?lat=0&amp;lon=0",
+                        headers={"X-Api-Key": pending["api_key"]})
+    if resp.status != 200:
+        raise RuntimeError(f"AWSPENDING key did not authenticate: {resp.status}")
+
+def finish_secret(arn, token):
+    meta = sm.describe_secret(SecretId=arn)
+    current = next((v for v,s in meta["VersionIdsToStages"].items()
+                    if "AWSCURRENT" in s), None)
+    if current == token: return
+    sm.update_secret_version_stage(
+        SecretId=arn, VersionStage="AWSCURRENT",
+        MoveToVersionId=token, RemoveFromVersionId=current,
+    )
+    # Then revoke old on admin API (failure here is non-fatal)</code></pre></div>
+          </details>
+        </div>
+      </article>
+
+    </div>
+  </details>
+</section>
+
+
+<!-- =========== Phase 5: Final review =========== -->
+<section class="space-y-3">
+  <details class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+    <summary class="px-4 py-3 flex items-center gap-3">
+      <span class="chev text-slate-400">▶</span>
+      <div class="flex-1">
+        <div class="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Phase 5</div>
+        <div class="text-sm font-semibold">Final review &amp; submission bundle</div>
+      </div>
+      <span class="badge bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">1 task</span>
+    </summary>
+    <div class="px-4 pb-4 pt-2 space-y-3">
+
+      <article class="task crit-pulse rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40" data-task="9" data-status="todo">
+        <header class="px-4 py-3 flex flex-wrap items-center gap-2">
+          <button class="status-pill badge" data-task-id="9">⚪ to do</button>
+          <span class="badge bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">critical path</span>
+          <h3 class="font-semibold text-sm flex-1 min-w-[200px]">Task 9 · Validate JSON + Python · Rubric check · Bundle ZIP</h3>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">~30 min</span>
+        </header>
+        <div class="px-4 pb-4 text-sm space-y-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Verification commands</div>
+            <pre class="bg-slate-100 dark:bg-slate-950 rounded p-3 overflow-auto text-xs"><code>for f in deliverables/*.json; do python3 -m json.tool "$f" &gt; /dev/null || exit 1; done
+python3 -m py_compile deliverables/01-validate-checksum.py deliverables/04-rotate-weather-api-key.py
+zip -r assignment-deliverables-2026-05-12.zip README.md deliverables/</code></pre>
+          </div>
+          <div>
+            <div class="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Rubric coverage table</div>
+            <div class="overflow-auto">
+              <table class="text-xs w-full border-collapse">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-800"><th class="py-1.5 pr-3 font-medium">Requirement</th><th class="py-1.5 font-medium">Artifact</th></tr></thead>
+                <tbody class="[&amp;_tr]:border-b [&amp;_tr]:border-slate-100 dark:[&amp;_tr]:border-slate-800/50 [&amp;_td]:py-1 [&amp;_td]:pr-3 [&amp;_td]:align-top">
+                  <tr><td>P1 · ASL JSON for state machine</td><td><code>01-ingestion-state-machine.asl.json</code></td></tr>
+                  <tr><td>P1 · MD5 vs manifest</td><td>ValidateChecksum + Lambda</td></tr>
+                  <tr><td>P1 · Quarantine routing</td><td>QuarantineParallel branch</td></tr>
+                  <tr><td>P1 · SNS alert on fail</td><td>PublishQuarantineAlert</td></tr>
+                  <tr><td>P1 · 3-dp rounding + Parquet</td><td>StartGlueAnonymize <code>--gps_precision 3</code></td></tr>
+                  <tr><td>P2 · KMS Key Policy JSON</td><td><code>02-kms-key-policy.json</code></td></tr>
+                  <tr><td>P2 · Allow Glue Decrypt</td><td>AllowGlueDecryptViaService</td></tr>
+                  <tr><td>P2 · Deny Decrypt to AdministratorAccess</td><td>DenyDecryptToEveryoneElse (explicit Deny)</td></tr>
+                  <tr><td>P2 · Break-Glass / MFA carve-out</td><td>AllowBreakGlassDecryptWithMFA</td></tr>
+                  <tr><td>P2 · Admin override prevention</td><td><code>02-ghost-admin-defense.md</code> + SCP</td></tr>
+                  <tr><td>P3 · 1-page technical note</td><td><code>03-data-skew-tech-note.md</code></td></tr>
+                  <tr><td>P3 · Not based on raising capacity</td><td>AQE + salting + spatial repartition (explicit)</td></tr>
+                  <tr><td>P4 · Rotation Lambda</td><td><code>04-rotate-weather-api-key.py</code></td></tr>
+                  <tr><td>P4 · Verify before deprecate</td><td>testSecret before finishSecret promotes AWSCURRENT</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </details>
+</section>
+
+<!-- ============== FOOTER ============== -->
+<footer class="text-xs text-slate-500 dark:text-slate-400 pt-6 pb-12 no-print">
+  <div class="border-t border-slate-200 dark:border-slate-800 pt-4">
+    <p>Saved at <code>~/regional-incident-data-lake/plan/plan.html</code>. Full markdown plan at <code>docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md</code>.</p>
+    <p class="mt-1">Tip: click any status pill (⚪/🟡/🟢/🔴) to cycle through <em>to do → in progress → done → blocked</em>. Status persists in <code>localStorage</code> under key <code>plan-status-incident-data-lake</code>.</p>
+  </div>
+</footer>
+
+</main>
+
+<script>
+// ============== STATE PERSISTENCE ==============
+const FEATURE = "incident-data-lake";
+const STORAGE_KEY = `plan-status-${FEATURE}`;
+const STATUSES = ["todo", "in_progress", "done", "blocked"];
+const STATUS_GLYPH = {
+  todo:        '⚪ to do',
+  in_progress: '🟡 in progress',
+  done:        '🟢 done',
+  blocked:     '🔴 blocked',
+};
+const STATUS_CLASS = {
+  todo:        'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  in_progress: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300',
+  done:        'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300',
+  blocked:     'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300',
+};
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveState(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+function renderPill(btn, status) {
+  btn.textContent = STATUS_GLYPH[status];
+  btn.className = 'status-pill badge ' + STATUS_CLASS[status];
+  const article = btn.closest('.task');
+  if (article) article.setAttribute('data-status', status);
+}
+
+function updateProgress() {
+  const tasks = document.querySelectorAll('.task');
+  const done = document.querySelectorAll('.task[data-status="done"]').length;
+  const total = tasks.length;
+  document.getElementById('progress-text').textContent = `${done} / ${total} done`;
+  document.getElementById('progress-bar').style.width = `${(done/total)*100}%`;
+}
+
+// hydrate
+const state = loadState();
+document.querySelectorAll('.status-pill').forEach(btn => {
+  const id = btn.getAttribute('data-task-id');
+  const status = state[id] || 'todo';
+  renderPill(btn, status);
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const cur = state[id] || 'todo';
+    const next = STATUSES[(STATUSES.indexOf(cur) + 1) % STATUSES.length];
+    state[id] = next;
+    saveState(state);
+    renderPill(btn, next);
+    updateProgress();
+  });
+});
+updateProgress();
+
+// ============== FILTER ==============
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const f = btn.getAttribute('data-filter');
+    document.body.className = document.body.className
+      .replace(/\bfilter-\S+/g, '').trim();
+    if (f !== 'all') document.body.classList.add(`filter-${f}`);
+    document.querySelectorAll('.filter-btn').forEach(b =>
+      b.classList.remove('bg-slate-200','dark:bg-slate-700','font-semibold'));
+    btn.classList.add('bg-slate-200','dark:bg-slate-700','font-semibold');
+  });
+});
+
+// ============== EXPAND / COLLAPSE ALL ==============
+document.getElementById('expand-all').addEventListener('click', () => {
+  document.querySelectorAll('details').forEach(d => d.open = true);
+});
+document.getElementById('collapse-all').addEventListener('click', () => {
+  document.querySelectorAll('details').forEach(d => d.open = false);
+});
+
+// ============== DARK MODE ==============
+const darkKey = 'plan-dark-mode';
+if (localStorage.getItem(darkKey) === '1' ||
+    (localStorage.getItem(darkKey) === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  document.documentElement.classList.add('dark');
+}
+document.getElementById('dark-toggle').addEventListener('click', () => {
+  document.documentElement.classList.toggle('dark');
+  localStorage.setItem(darkKey, document.documentElement.classList.contains('dark') ? '1' : '0');
+});
+</script>
+</body>
+</html>
