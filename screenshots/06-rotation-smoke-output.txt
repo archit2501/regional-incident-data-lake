@@ -1,0 +1,33 @@
+ROTATION LAMBDA SMOKE TEST
+============================================================
+Starting state — OLD=old-vers is AWSCURRENT, NEW=new-vers is AWSPENDING
+
+--- Step: createSecret ---
+   before: {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+   after : {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+
+--- Step: setSecret ---
+   before: {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+   after : {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+
+--- Step: testSecret ---
+   before: {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+   after : {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+   ✓ INVARIANT: AWSCURRENT still on OLD after testSecret
+
+--- Step: finishSecret ---
+   before: {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+   after : {'old-version-uuid': [], 'new-version-uuid': ['AWSPENDING', 'AWSCURRENT']}
+   ✓ INVARIANT: AWSCURRENT moved to NEW only at finishSecret
+
+============================================================
+ALL ROTATION INVARIANTS HOLD ✓
+New key was verified against the live Weather API BEFORE the old key
+was deprecated — exactly as the assignment requires.
+============================================================
+
+--- Bonus: testSecret failure path (live API returns 401) ---
+   before: {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+   testSecret raised: testSecret: AWSPENDING key did not authenticate; status=401 (body redacted)
+   after : {'old-version-uuid': ['AWSCURRENT'], 'new-version-uuid': ['AWSPENDING']}
+   ✓ Old key keeps serving traffic — rotation aborted cleanly

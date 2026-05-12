@@ -1,0 +1,63 @@
+validate-checksum: routing to quarantine — manifest_md5_not_hex
+
+--- Test 1 — valid checksum (happy path) ---
+{
+  "bucket": "incident-landing-prod",
+  "key": "agency-a/2026-05-12/feed-001.zip",
+  "manifestKey": "agency-a/2026-05-12/feed-001.manifest.json",
+  "checksumValid": true,
+  "computedMd5": "9d14ce153853b235acb20b4107afa2f3",
+  "expectedMd5": "9d14ce153853b235acb20b4107afa2f3",
+  "sizeBytes": 110000,
+  "copySource": "incident-landing-prod/agency-a/2026-05-12/feed-001.zip",
+  "failureReason": ""
+}
+  Result: checksumValid=True, routes to ExtractZip ✓
+
+--- Test 2 — checksum mismatch (tampered file) ---
+{
+  "bucket": "incident-landing-prod",
+  "key": "agency-b/2026-05-12/feed-002.zip",
+  "manifestKey": "agency-b/2026-05-12/feed-002.manifest.json",
+  "checksumValid": false,
+  "computedMd5": "9d14ce153853b235acb20b4107afa2f3",
+  "expectedMd5": "ffffffffffffffffffffffffffffffff",
+  "sizeBytes": 110000,
+  "copySource": "incident-landing-prod/agency-b/2026-05-12/feed-002.zip",
+  "failureReason": "checksum_mismatch"
+}
+  Result: checksumValid=False, routes to QuarantineParallel ✓
+
+--- Test 3 — manifest md5 not hex (malformed manifest) ---
+{
+  "bucket": "incident-landing-prod",
+  "key": "agency-c/2026-05-12/feed-003.zip",
+  "manifestKey": "agency-c/2026-05-12/feed-003.manifest.json",
+  "checksumValid": false,
+  "computedMd5": "",
+  "expectedMd5": "",
+  "sizeBytes": 0,
+  "failureReason": "manifest_md5_not_hex",
+  "copySource": "incident-landing-prod/agency-c/2026-05-12/feed-003.zip"
+}
+  Result: rejected at hex validation, routes to QuarantineParallel ✓
+
+--- Test 4 — special characters in S3 key (URL-encoded CopySource) ---
+{
+  "bucket": "incident-landing-prod",
+  "key": "agency-d/2026-05-12/feed with spaces & special#chars.zip",
+  "manifestKey": "agency-d/2026-05-12/feed with spaces & special#chars.manifest.json",
+  "checksumValid": true,
+  "computedMd5": "023c4f8dc09024dc947edb9e6f079d6c",
+  "expectedMd5": "023c4f8dc09024dc947edb9e6f079d6c",
+  "sizeBytes": 500,
+  "copySource": "incident-landing-prod/agency-d/2026-05-12/feed%20with%20spaces%20%26%20special%23chars.zip",
+  "failureReason": ""
+}
+  URL-encoded copySource: incident-landing-prod/agency-d/2026-05-12/feed%20with%20spaces%20%26%20special%23chars.zip
+  ✓ Special chars properly encoded for s3:CopyObject
+
+============================================================
+ALL 4 SMOKE TESTS PASSED ✓
+validate-checksum Lambda runs correctly end-to-end
+============================================================

@@ -1,0 +1,17 @@
+=== 1. Static validation ===
+
+JSON files:
+  PASS  deliverables/01-ingestion-state-machine.asl.json
+  PASS  deliverables/02-kms-key-policy.json
+  PASS  deliverables/02-scp-kms-guardrail.json
+
+Python files:
+  PASS  01-validate-checksum.py (compiles)
+  PASS  04-rotate-weather-api-key.py (compiles)
+  PASS  03-glue-job-skeleton.py (parses; awsglue only resolves on Glue worker)
+
+Tech note size:
+     806 deliverables/03-data-skew-tech-note.md
+
+ASL state machine — states defined:
+  ValidateChecksum, ChecksumChoice, QuarantineParallel, ChecksumFailed, ExtractZip, StartGlueAnonymize, GlueResultChoice, FailureNotification, IngestionFailed, IngestionSucceeded
