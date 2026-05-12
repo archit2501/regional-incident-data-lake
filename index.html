@@ -41,10 +41,7 @@
   html { scroll-behavior: smooth; }
   body {
     margin: 0;
-    background:
-      radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--blue) 10%, transparent), transparent 28rem),
-      radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--green) 10%, transparent), transparent 24rem),
-      var(--bg);
+    background: var(--bg);
     color: var(--ink);
     font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
@@ -129,29 +126,18 @@
   .panel-body { padding: 18px; }
   .hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) 430px;
+    grid-template-columns: minmax(0, 1.05fr) 470px;
     gap: 18px;
     align-items: stretch;
   }
   .hero-main {
-    min-height: 520px;
+    min-height: 560px;
     padding: 30px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     overflow: hidden;
     position: relative;
-  }
-  .hero-main:after {
-    content: "";
-    position: absolute;
-    right: -110px;
-    bottom: -160px;
-    width: 360px;
-    height: 360px;
-    border: 1px solid color-mix(in srgb, var(--blue) 24%, transparent);
-    border-radius: 50%;
-    pointer-events: none;
   }
   .eyebrow {
     display: inline-flex;
@@ -172,8 +158,8 @@
   }
   .hero h2 {
     margin: 14px 0 12px;
-    max-width: 980px;
-    font-size: clamp(34px, 5.2vw, 76px);
+    max-width: 900px;
+    font-size: clamp(36px, 5.1vw, 74px);
     line-height: .95;
     letter-spacing: 0;
   }
@@ -197,6 +183,184 @@
     font-weight: 900;
   }
   .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .problem-strip {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    max-width: 900px;
+  }
+  .problem-tile {
+    border: 1px solid var(--line);
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+  .problem-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+    color: var(--blue);
+    background: color-mix(in srgb, var(--blue) 10%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
+  }
+  .problem-tile strong { display: block; font-size: 13px; }
+  .problem-tile span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .hero-kpis {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .hero-kpis span {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 999px;
+    padding: 7px 10px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .ops-board {
+    padding: 16px;
+    display: grid;
+    gap: 12px;
+    min-height: 560px;
+    border-color: color-mix(in srgb, var(--blue) 24%, var(--line));
+  }
+  .ops-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: start;
+  }
+  .ops-head h3 { margin: 0; font-size: 14px; }
+  .ops-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+  .live-badge {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    color: var(--green);
+    border: 1px solid color-mix(in srgb, var(--green) 42%, var(--line));
+    background: color-mix(in srgb, var(--green) 9%, var(--panel));
+    border-radius: 999px;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+  .map-card {
+    border: 1px solid var(--line);
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .signal-map {
+    position: relative;
+    height: 230px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 1px),
+      linear-gradient(0deg, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 1px),
+      var(--panel);
+    background-size: 38px 38px;
+    overflow: hidden;
+  }
+  .corridor {
+    position: absolute;
+    height: 4px;
+    background: color-mix(in srgb, var(--blue) 60%, transparent);
+    border-radius: 999px;
+    transform-origin: left center;
+  }
+  .corridor.a { width: 300px; left: 44px; top: 112px; transform: rotate(-14deg); }
+  .corridor.b { width: 260px; left: 92px; top: 54px; transform: rotate(33deg); background: color-mix(in srgb, var(--teal) 60%, transparent); }
+  .corridor.c { width: 240px; left: 126px; top: 172px; transform: rotate(-35deg); background: color-mix(in srgb, var(--amber) 60%, transparent); }
+  .hotspot {
+    position: absolute;
+    width: var(--s);
+    height: var(--s);
+    left: var(--x);
+    top: var(--y);
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+    background: color-mix(in srgb, var(--c) 22%, transparent);
+    border: 2px solid var(--c);
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--c) 12%, transparent);
+  }
+  .map-label {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    background: color-mix(in srgb, var(--panel) 86%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+  .ops-flow {
+    display: grid;
+    gap: 8px;
+  }
+  .flow-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 9px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--soft);
+    padding: 9px;
+  }
+  .flow-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    color: var(--blue);
+    background: color-mix(in srgb, var(--blue) 10%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
+    font-weight: 900;
+  }
+  .flow-row strong { display: block; font-size: 12px; }
+  .flow-row span { display: block; color: var(--muted); font-size: 11px; }
+  .flow-status { font-size: 11px; font-weight: 900; color: var(--green); }
+  .risk-meter {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--soft);
+    padding: 12px;
+    display: grid;
+    gap: 10px;
+  }
+  .meter-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 46px;
+    align-items: center;
+    gap: 9px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .bar {
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--line) 72%, transparent);
+    overflow: hidden;
+  }
+  .bar i { display: block; height: 100%; border-radius: inherit; background: var(--green); width: var(--w); }
+  .bar.red i { background: var(--red); }
+  .bar.amber i { background: var(--amber); }
   .score {
     padding: 18px;
     display: grid;
@@ -447,7 +611,7 @@
       </span>
       <span>
         <h1>Regional Incident Data Lake</h1>
-        <p>Full assignment website, no downloads needed</p>
+        <p>Tamper-resistant geospatial ingestion</p>
       </span>
     </a>
     <nav class="nav" aria-label="Main navigation">
@@ -467,34 +631,67 @@
   <section id="overview" class="hero">
     <div class="panel hero-main">
       <div>
-        <span class="eyebrow"><span class="pulse"></span>Complete interactive submission</span>
-        <h2>Everything the checker needs is inside this website.</h2>
+        <span class="eyebrow"><span class="pulse"></span>Regional Incident Data Lake</span>
+        <h2>High-velocity public safety data, secured before it becomes intelligence.</h2>
         <p class="hero-copy">
-          I built a complete AWS architecture submission for the Regional Incident Data Lake assignment.
-          This website explains each requirement, shows the architecture visually, embeds the stakeholder
-          heatmap/operator console, and lets the reviewer inspect every artifact in an in-page source viewer.
+          External agencies send GPS pings, incident logs, and vehicle telemetry into one regional lake.
+          The solution protects the pipeline at the two points that matter most: data integrity before
+          analytics, and privilege isolation before anyone can read raw location data.
         </p>
+        <div class="problem-strip" aria-label="Primary problem and solution">
+          <div class="problem-tile">
+            <span class="problem-icon">01</span>
+            <span><strong>Poisoned input is stopped early</strong><span>MD5 validation gates every zip before extraction; failed files move to quarantine with SNS evidence.</span></span>
+          </div>
+          <div class="problem-tile">
+            <span class="problem-icon">02</span>
+            <span><strong>Raw coordinates stay isolated</strong><span>KMS explicit deny, Glue service constraints, MFA break-glass, SCP guardrails, and CloudTrail audit.</span></span>
+          </div>
+        </div>
+        <div class="hero-kpis" aria-label="Solution controls">
+          <span>Step Functions orchestration</span>
+          <span>Glue anonymization</span>
+          <span>Skew-resilient PySpark</span>
+          <span>Verified secret rotation</span>
+        </div>
       </div>
       <div class="hero-actions">
-        <a class="btn primary" href="#answers">Review the four answers</a>
-        <a class="btn" href="#source">Open source viewer</a>
-        <a class="btn" href="#console">See frontend console</a>
-        <a class="btn" href="#evidence">See test evidence</a>
+        <a class="btn primary" href="#answers">Open the solution</a>
+        <a class="btn" href="#architecture">Trace the architecture</a>
+        <a class="btn" href="#console">View the heatmap console</a>
       </div>
     </div>
-    <aside class="panel score">
-      <div class="metric-grid">
-        <div class="metric"><strong>4/4</strong><span>required problems answered</span></div>
-        <div class="metric"><strong>9</strong><span>assignment artifacts viewable in site</span></div>
-        <div class="metric"><strong>0</strong><span>download clicks required</span></div>
-        <div class="metric"><strong>100%</strong><span>local validation passed</span></div>
+    <aside class="panel ops-board" aria-label="Incident operations visual">
+      <div class="ops-head">
+        <div>
+          <h3>Live ingest posture</h3>
+          <p>Visual model of the data lake controls.</p>
+        </div>
+        <span class="live-badge"><span class="pulse"></span>controls active</span>
       </div>
-      <ol class="review-steps">
-        <li><b>1</b><span><strong>Read the overview</strong><span>The full solution is summarized above the fold.</span></span></li>
-        <li><b>2</b><span><strong>Review each problem</strong><span>Each assignment ask is mapped to a design answer.</span></span></li>
-        <li><b>3</b><span><strong>Inspect source in-page</strong><span>Buttons load JSON, Python, and notes into the viewer.</span></span></li>
-        <li><b>4</b><span><strong>Check evidence</strong><span>Screenshots and smoke outputs are visible without leaving the site.</span></span></li>
-      </ol>
+      <div class="map-card">
+        <div class="signal-map" aria-label="Regional incident signal map">
+          <span class="corridor a"></span>
+          <span class="corridor b"></span>
+          <span class="corridor c"></span>
+          <span class="hotspot" style="--x:28%;--y:52%;--s:34px;--c:var(--green)"></span>
+          <span class="hotspot" style="--x:58%;--y:39%;--s:48px;--c:var(--amber)"></span>
+          <span class="hotspot" style="--x:73%;--y:68%;--s:28px;--c:var(--blue)"></span>
+          <span class="hotspot" style="--x:42%;--y:74%;--s:22px;--c:var(--teal)"></span>
+          <span class="map-label">anonymized regional heatmap · GPS rounded to 3 dp</span>
+        </div>
+      </div>
+      <div class="ops-flow">
+        <div class="flow-row"><span class="flow-dot">S3</span><span><strong>Landing feed</strong><span>zip + manifest received</span></span><em class="flow-status">guarded</em></div>
+        <div class="flow-row"><span class="flow-dot">MD5</span><span><strong>Integrity gate</strong><span>tamper check before extraction</span></span><em class="flow-status">pass/fail</em></div>
+        <div class="flow-row"><span class="flow-dot">KMS</span><span><strong>Raw data isolation</strong><span>admins blocked by explicit deny + SCP</span></span><em class="flow-status">locked</em></div>
+        <div class="flow-row"><span class="flow-dot">API</span><span><strong>Weather enrichment</strong><span>new key verified before old key retires</span></span><em class="flow-status">verified</em></div>
+      </div>
+      <div class="risk-meter" aria-label="Risk reduction summary">
+        <div class="meter-row"><span>Poisoned input</span><span class="bar red"><i style="--w:18%"></i></span><strong>low</strong></div>
+        <div class="meter-row"><span>Admin override</span><span class="bar amber"><i style="--w:12%"></i></span><strong>low</strong></div>
+        <div class="meter-row"><span>Skew failure</span><span class="bar"><i style="--w:84%"></i></span><strong>ready</strong></div>
+      </div>
     </aside>
   </section>
 
