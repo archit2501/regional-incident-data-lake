@@ -4,7 +4,7 @@ Submission for the architecture assignment covering a serverless geospatial data
 
 ## Website
 
-Open [`index.html`](index.html) first. It is the full GitHub Pages-ready website that explains every assignment requirement, the architecture, the files produced, the application frontend, and the validation evidence.
+Open [`index.html`](index.html) first. It is the full GitHub Pages-ready website that explains every assignment requirement, the architecture, the files produced, the application frontend, and the validation evidence. The website keeps the review flow in-page: artifact buttons load JSON, Python, Markdown, and smoke-test logs into the embedded source viewer instead of navigating away or downloading files.
 
 Local run:
 
@@ -34,9 +34,9 @@ GitHub Pages deployment: push this repository, then set **Settings -> Pages -> D
 
 ## How to review
 
-Start with **`deliverables/00-reviewer-visual.html`**. It is a self-contained frontend for the checker: one visual path through the full architecture, requirement coverage, required artifact links, screenshots, and smoke-test evidence.
+Start with **`index.html`**. It is the full website for the checker: one visual path through the full architecture, requirement coverage, embedded operator console, screenshots, and smoke-test evidence. The raw files are still present in `deliverables/`, but the intended review experience is through the in-page source viewer.
 
-Then open each required artifact in the order above. The technical note and the Ghost-Admin write-up are prose; the JSON and Python files are review-ready. **Open `deliverables/05-operator-console.html` directly in a browser** for the application UX layer: a public-safety heatmap for government stakeholders, plus an operator rail showing pipeline status, Glue partition skew, secret rotation, and a KMS access audit.
+`deliverables/00-reviewer-visual.html` remains as a compact backup dashboard, and `deliverables/05-operator-console.html` remains the standalone operator-console artifact. The homepage embeds the console so the checker does not need to leave the site.
 
 The plan that drove this submission lives at:
 - [`docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md`](docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md) — full markdown plan
