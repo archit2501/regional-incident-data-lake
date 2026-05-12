@@ -754,7 +754,6 @@
       <a href="#answers">Answers</a>
       <a href="#console">Console</a>
       <a href="#evidence">Evidence</a>
-      <a href="#deploy">Deploy</a>
     </nav>
     <span class="spacer"></span>
     <button id="themeButton" class="icon-btn" type="button" aria-label="Toggle theme">
@@ -1222,29 +1221,6 @@
         <button class="artifact-button" data-file="screenshots/06-rotation-smoke-output.txt">View rotation smoke</button>
         <button class="artifact-button" data-file="README.md">View README</button>
         <button class="artifact-button" data-file="DEPLOYMENT.md">View deployment note</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ───────────────────────────── DEPLOY ───────────────────────────── -->
-  <section id="deploy" class="card">
-    <div class="card-head">
-      <div>
-        <h2>Deployment</h2>
-        <p>Static repository served by GitHub Pages from the <code>main</code> branch root.</p>
-      </div>
-      <span class="pill"><span class="dot"></span>index.html at repo root</span>
-    </div>
-    <div class="card-body deploy-grid">
-      <div class="explain">
-        <h4>Deploy to GitHub Pages</h4>
-        <p>Push to GitHub, then set <code>Settings → Pages → Deploy from a branch → main / root</code>. The repository ships with <code>.nojekyll</code> so every file is served as-is.</p>
-      </div>
-      <div class="explain">
-        <h4>Run locally</h4>
-        <pre class="codeblock">python3 -m http.server 8088 --bind 127.0.0.1
-# then open
-http://127.0.0.1:8088/</pre>
       </div>
     </div>
   </section>
