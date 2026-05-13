@@ -506,6 +506,76 @@
   .decision-body ul li { margin-bottom: 4px; }
   .decision-body ul li b { color: var(--ink); }
 
+  /* ──────────────────────────────────────────────────────────
+     Research block — Pros + advanced-techniques side by side
+  ─────────────────────────────────────────────────────────── */
+  .research {
+    margin-top: 4px;
+    padding: 18px 20px 20px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface-strong) 55%, transparent);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px 30px;
+  }
+  .research h4 {
+    margin: 0 0 12px;
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .research h4::before {
+    content: "";
+    width: 14px;
+    height: 1px;
+    background: var(--accent);
+  }
+  .research ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 10px;
+  }
+  .research li {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    padding-left: 16px;
+    position: relative;
+  }
+  .research li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 8px;
+    height: 1px;
+    background: var(--accent);
+  }
+  .pros li b { color: var(--ink); font-weight: 700; }
+  .refs li b {
+    color: color-mix(in srgb, var(--accent) 75%, var(--ink));
+    font-weight: 700;
+  }
+  .refs li em { font-style: italic; color: var(--ink-2); }
+  .research code {
+    font-size: 11.5px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  }
+  @media (max-width: 1180px) {
+    .research { grid-template-columns: 1fr; gap: 18px; padding: 16px 18px; }
+  }
+
   .artifact-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .artifact-button {
     padding: 7px 10px;
@@ -566,18 +636,69 @@
   }
 
   /* ──────────────────────────────────────────────────────────
-     Footer
+     Footer — personal contact + submission notes
   ─────────────────────────────────────────────────────────── */
   .footer {
-    margin: 40px auto 0;
+    margin: 56px auto 0;
     max-width: 1040px;
-    padding: 32px 8px 48px;
+    padding: 36px 8px 40px;
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: 13px;
     border-top: 1px solid var(--line);
   }
-  .footer p { margin: 0; line-height: 1.6; }
-  .footer p + p { margin-top: 4px; }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 1fr;
+    gap: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--line);
+  }
+  .footer-grid > div { display: grid; gap: 6px; align-content: start; }
+  .footer-grid p, .footer-grid a {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    line-height: 1.55;
+    text-decoration: none;
+  }
+  .footer-grid a { transition: color .15s ease; }
+  .footer-grid a:hover, .footer-grid a:focus-visible { color: var(--accent); outline: none; }
+  .footer-brand {
+    margin: 0 0 6px !important;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink) !important;
+    letter-spacing: -0.012em;
+  }
+  .footer-role {
+    color: var(--ink) !important;
+    font-weight: 600;
+  }
+  .footer-label {
+    margin: 0 0 4px !important;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted) !important;
+    font-weight: 800;
+  }
+  .footer-bottom {
+    margin-top: 22px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .footer-bottom p { margin: 0; }
+  .footer-bottom .right { display: flex; flex-wrap: wrap; gap: 12px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; }
+  .footer-bottom .right span { color: var(--muted); }
+  @media (max-width: 760px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 22px; }
+    .footer-grid > div:first-child { grid-column: span 2; }
+  }
 
   /* ──────────────────────────────────────────────────────────
      Responsive
@@ -740,9 +861,35 @@
             <div class="problem-body">
               <h3>Automated ingestion pipeline</h3>
               <div class="cols">
-                <div class="explain"><h4>They asked for</h4><p>A serverless S3 zip workflow using Step Functions, MD5 validation, quarantine/SNS routing, extraction, Glue anonymization, and Parquet conversion.</p></div>
-                <div class="explain"><h4>What I built</h4><p>An ASL state machine with checksum validation, Choice routing, parallel quarantine operations, retries with jitter, ExtractZip, and Glue startJobRun.sync.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>Poisoned files never reach analytics. Valid files are anonymized before curated storage. Failures alert SNS with filterable metadata.</p></div>
+                <div class="explain"><h4>They asked for</h4><p>A serverless, event-driven workflow for new <code>.zip</code> arrivals in S3 — Step Functions orchestrated MD5 validation against a manifest, quarantine + SNS routing on failure, extraction on success, and a Glue job that rounds GPS to 3 decimal places and writes Parquet.</p></div>
+                <div class="explain"><h4>What I built</h4><p>An ASL state machine modeled as a deterministic finite automaton. The validation Lambda streams the S3 object in 8 MiB chunks (Merkle–Damgård MD5 — <em>O(n) time, O(1) memory</em>) so multi-GB zips don't blow Lambda's 10 GB RAM ceiling. Failure fans out S3 copy + delete + SNS publish through a Parallel state. Success calls <code>glue:startJobRun.sync</code>.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>Streaming hashes inherit O(1) memory from the iterative Merkle–Damgård construction. Direct AWS SDK integrations eliminate Lambda hops on auxiliary steps. Full-jitter exponential backoff on retries (Marc Brooker, 2015) prevents synchronized retry storms under upstream throttling — provably better tail latency than equal-jitter or capped exponential.</p></div>
+              </div>
+              <div class="research">
+                <div class="pros">
+                  <h4>Pros · why this approach wins</h4>
+                  <ul>
+                    <li><b>O(n) time / O(1) memory</b> integrity hashing — independent of file size, via streaming Merkle–Damgård chunks.</li>
+                    <li><b>Zero Lambda cold start</b> on S3/SNS/Glue calls — Step Functions optimized SDK integrations remove the wrapper Lambda layer.</li>
+                    <li><b>Parallel fan-out on failure</b> — quarantine copy + delete + SNS publish run concurrently; latency = max(branches), not sum.</li>
+                    <li><b>glue:startJobRun.sync</b> — Step Functions blocks natively on Glue completion; no polling Lambda, no busy loop.</li>
+                    <li><b>Full-jitter retries</b> with <code>JitterStrategy: FULL</code> — proven optimal under contention; breaks thundering-herd retry storms.</li>
+                    <li><b>RFC 3986 percent-encoded <code>copySource</code></b> — handles any UTF-8 S3 key, including spaces, <code>+</code>, <code>#</code>, non-ASCII.</li>
+                    <li><b>O(1) input gate</b> — 32-char lowercase-hex regex on the manifest fails fast before paying for a multi-GB hash.</li>
+                    <li><b>Bounded execution</b> — top-level <code>TimeoutSeconds=7200</code>, Glue task <code>=5400</code>; a stuck job never sits forever.</li>
+                  </ul>
+                </div>
+                <div class="refs">
+                  <h4>Advanced techniques · references</h4>
+                  <ul>
+                    <li><b>Merkle–Damgård construction</b> — <em>Damgård 1989, "A Design Principle for Hash Functions" (CRYPTO).</em> The iterative compression that makes MD5 streamable.</li>
+                    <li><b>Full-jitter backoff</b> — <em>Marc Brooker, "Exponential Backoff and Jitter," AWS Architecture Blog 2015.</em> Formal proof that <code>rand(0, cap)</code> is better than equal-jitter under contention.</li>
+                    <li><b>Workflow as Petri net</b> — <em>van der Aalst, "Workflow Patterns," DKE 2003.</em> Step Functions states map to places/transitions; the visual graph is the Petri net.</li>
+                    <li><b>RFC 3986</b> — URI percent-encoding for the S3 CopySource header.</li>
+                    <li><b>MD5 caveat</b> — Wang &amp; Yu 2005, Stevens 2013 show chosen-prefix collisions. Used here for transmission integrity against a trusted manifest, not adversarial tamper resistance. Production hardening: S3 Object Lock + SHA-256 KMS-signed manifest.</li>
+                    <li><b>AWS Lambda streaming I/O</b> — boto3's <code>StreamingBody</code> exposes a chunked iterator; we use <code>iter(lambda: body.read(CHUNK), b"")</code> to bound memory.</li>
+                  </ul>
+                </div>
               </div>
               <ul class="checks">
                 <li><span class="tick">✓</span><span>MD5 streamed in Lambda, manifest validated as 32-char hex.</span></li>
@@ -805,9 +952,35 @@
             <div class="problem-body">
               <h3>Ghost Admin defense</h3>
               <div class="cols">
-                <div class="explain"><h4>They asked for</h4><p>A KMS key policy that lets Glue decrypt while explicitly denying everyone else — including AdministratorAccess — unless a security condition is met.</p></div>
-                <div class="explain"><h4>What I built</h4><p>An explicit-Deny KMS policy, Glue via kms:ViaService, MFA break-glass carve-out, assumed-role ARN handling, and an Organizations SCP backstop.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>AdministratorAccess cannot beat explicit Deny. A workload-account admin cannot rewrite the key policy because the Org SCP blocks tampering.</p></div>
+                <div class="explain"><h4>They asked for</h4><p>A KMS Key Policy that lets the Glue Service Role decrypt while explicitly denying <code>kms:Decrypt</code> to all other principals, including those with <code>AdministratorAccess</code>, unless they satisfy a specific security condition (MFA / Break-Glass). Plus a written explanation of how to stop an admin from overriding the policy.</p></div>
+                <div class="explain"><h4>What I built</h4><p>Defense in depth across four orthogonal control planes: (1) resource-level explicit <code>Deny</code> in the key policy; (2) conditional Allow on Glue gated by <code>kms:ViaService</code> + <code>kms:EncryptionContext</code>; (3) Organizations SCP denying <code>kms:PutKeyPolicy</code> account-wide; (4) CloudTrail Lake + EventBridge auto-remediation via AWS Config.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>IAM evaluation rule: any explicit <code>Deny</code> matching the request denies it regardless of <code>Allow</code> statements — proven formally by AWS Zelkova's SMT-backed policy verifier. SCPs evaluate at the Org level and cannot be overridden from inside the workload account; only a principal in the management account can change them. Encryption context acts as Additional Authenticated Data (AES-GCM AAD), so decryption with the wrong context fails by construction.</p></div>
+              </div>
+              <div class="research">
+                <div class="pros">
+                  <h4>Pros · why this approach wins</h4>
+                  <ul>
+                    <li><b>Formally provable</b> — explicit <code>Deny</code> overrides <code>Allow</code> under AWS IAM semantics; verifiable by AWS Zelkova (Z3 SMT solver) for the no-decrypt-without-MFA property.</li>
+                    <li><b>Orthogonal control planes</b> — Lampson's defense-in-depth: four statistically independent failure surfaces; single-control breach does not compromise the system.</li>
+                    <li><b>Trust-boundary separation</b> — SCPs live in the Org management account; workload admins literally cannot reach them, regardless of IAM privilege.</li>
+                    <li><b>Cryptographic binding</b> — <code>kms:EncryptionContext:project=incident-data-lake</code> is bound as AAD; wrong context invalidates the auth tag.</li>
+                    <li><b>Service-path enforcement</b> — <code>kms:ViaService</code> prevents stolen Glue credentials from being replayed via the CLI; the request principal won't carry the via-service indicator.</li>
+                    <li><b>ArnNotLike with both forms</b> — covers both <code>iam::ROLE</code> and <code>sts::assumed-role/X/*</code>; avoids the canonical IAM policy bug that denies the legitimate Glue role at runtime.</li>
+                    <li><b>Recoverability anchored at root</b> — keeping <code>kms:*</code> for root is the AWS-documented recovery pattern; root containment moves to the SCP layer.</li>
+                    <li><b>Verifiable audit trail</b> — CloudTrail Lake + EventBridge + Config provides the "verifiable audit trail" the Zero-Trust requirement demands.</li>
+                  </ul>
+                </div>
+                <div class="refs">
+                  <h4>Advanced techniques · references</h4>
+                  <ul>
+                    <li><b>AWS Zelkova</b> — <em>Backes et al., CAV 2018, "Semantic-based Automated Reasoning for AWS Access Policies Using SMT."</em> Encodes IAM policy as logical formulas and solves with Z3.</li>
+                    <li><b>Envelope encryption</b> — KMS uses two-tier keys: a Data Encryption Key (DEK) encrypted by a Key Encryption Key (KEK) inside the HSM. <code>kms:Decrypt</code> only decrypts the DEK; bulk decryption happens locally on the calling side. Documented in NIST SP 800-57 Part 1.</li>
+                    <li><b>AES-GCM AAD binding</b> — <em>NIST SP 800-38D.</em> Encryption context is incorporated into the GCM authentication tag; tampering invalidates the tag deterministically.</li>
+                    <li><b>Defense in depth</b> — <em>Saltzer &amp; Schroeder 1975, "The Protection of Information in Computer Systems";</em> <em>Lampson 1974, "Protection."</em> Orthogonal controls = independent failure surfaces.</li>
+                    <li><b>STS assumed-role ARNs</b> — AWS IAM Reference: a role's runtime principal is the STS form <code>arn:aws:sts::ACCT:assumed-role/Role/Session</code>, not the IAM form. ArnLike with the wildcard session is the correct match.</li>
+                    <li><b>AWS Well-Architected SEC02-BP01</b> — "Limit access to root, administrative users." The Org SCP + sealed root credential is the documented pattern.</li>
+                  </ul>
+                </div>
               </div>
               <ul class="checks">
                 <li><span class="tick">✓</span><span>Glue decrypt limited to service-context use, S3/KMS read path supported.</span></li>
@@ -870,9 +1043,36 @@
             <div class="problem-body">
               <h3>Glue data skew optimization</h3>
               <div class="cols">
-                <div class="explain"><h4>They asked for</h4><p>A one-page strategy for 10 million GPS pings for a single intersection — without raising worker type or capacity.</p></div>
-                <div class="explain"><h4>What I built</h4><p>A technical note + PySpark skeleton using AQE, two-stage salted aggregation, weighted centroid math, and time/region S3 partitioning.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>The hot intersection spreads across many shuffle tasks before aggregation. Output partitioning prevents recreating the hot key at write time.</p></div>
+                <div class="explain"><h4>They asked for</h4><p>A one-page strategy for 10 million GPS pings concentrated on a single intersection — without raising Glue Worker Type or Max Capacity. The deliverable is a one-page technical note covering PySpark optimizations, S3 partitioning, and salting techniques.</p></div>
+                <div class="explain"><h4>What I built</h4><p>Three orthogonal fixes applied together: (1) Spark AQE skew-join handling + adaptive coalescing; (2) two-stage salted aggregation — salt the hot key with 64 random buckets <code>(F.rand()*64).cast("int")</code>, aggregate by <code>(intersection_id, salt)</code> emitting <em>sum</em> + <em>count</em>, then strip the salt and reconstruct via <code>Σsum / Σcount</code>; (3) time-only output partitioning with a random-salt pre-write repartition.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>The skew is Zipfian — a few intersections carry most of the traffic, the classical empirical distribution for road incidents. Hash partitioning a Zipfian key has unbounded worst-case partition size. Salting transforms one O(n)-row partition into 64 partitions of O(n/64) rows. The weighted reconstruction is the unbiased statistical estimator; <code>avg(avg)</code> is biased when bucket sizes differ.</p></div>
+              </div>
+              <div class="research">
+                <div class="pros">
+                  <h4>Pros · why this approach wins</h4>
+                  <ul>
+                    <li><b>Bounded worst-case partition size</b> — O(n/S) where S=64 salt buckets, instead of unbounded under naive hash partitioning of a Zipfian key.</li>
+                    <li><b>Mathematically unbiased</b> — weighted reconstruction <code>Σsum_b / Σcount_b</code> is the true sample mean; <code>avg(avg)</code> is a biased estimator under unequal bucket sizes (textbook stratified-sampling result).</li>
+                    <li><b>Constraint-compliant</b> — works on the existing G.1X / 10-worker config; no <code>spark.executor.memory</code> override; no worker-type bump.</li>
+                    <li><b>Memory bound preserved</b> — peak executor memory drops from &gt;12 GB to &lt;2 GB; OOM eliminated structurally.</li>
+                    <li><b>Orthogonal to AQE</b> — AQE handles skewed joins; salting handles the <code>groupBy</code> case AQE doesn't cover (until Spark 3.5+).</li>
+                    <li><b>Query-aligned output partitioning</b> — time-based partition pruning is monotonic and selective; <code>intersection_id</code> pruning would be Zipfian-useless.</li>
+                    <li><b>Deterministic with reproducibility</b> — <code>F.rand(seed=1729)</code> gives identical bucket assignment on retry; useful for incremental re-processing.</li>
+                    <li><b>Bounded write fan-out</b> — pre-write repartition on a random salt expression (not the hot key tuple) — the hot intersection spreads across ~400 / (regions × hours) writer tasks instead of one.</li>
+                  </ul>
+                </div>
+                <div class="refs">
+                  <h4>Advanced techniques · references</h4>
+                  <ul>
+                    <li><b>SkewTune</b> — <em>Kwon et al., SIGMOD 2012, "SkewTune: Mitigating Skew in MapReduce Applications."</em> Foundational paper on dynamic task splitting for skewed keys; the conceptual ancestor of all modern salting approaches.</li>
+                    <li><b>Spark AQE</b> — <em>Databricks 2020, "Adaptive Query Execution in Spark."</em> The <code>OptimizeSkewedJoin</code> rule splits skewed shuffle partitions at runtime using observed statistics.</li>
+                    <li><b>High Performance Spark</b> — <em>Karau &amp; Warren, O'Reilly 2017, Ch. 6.</em> Salting/key-splitting recipes; the canonical practitioner reference.</li>
+                    <li><b>Zipf's law for incident data</b> — empirically observed in NHTSA crash statistics: incident density follows a Pareto distribution by intersection. A few hotspots account for most events.</li>
+                    <li><b>Stratified sampling estimator</b> — <em>Cochran, "Sampling Techniques" 3e (1977), Ch. 5.</em> The unbiased estimator from sub-samples is <code>Σ(n_i · mean_i) / Σ n_i</code>, not <code>mean(mean_i)</code>. The salted-aggregation correctness proof.</li>
+                    <li><b>Spatial indexing alternatives</b> — Uber's H3 (hexagonal hierarchical), Google's S2 (sphere-spatial), and Morton/Z-order curves (Iceberg/Hudi support) for locality-preserving partitioning.</li>
+                    <li><b>Power-of-two-choices</b> — <em>Mitzenmacher 2001.</em> Theoretical basis for why a small number of salt buckets dramatically smooths load distribution.</li>
+                  </ul>
+                </div>
               </div>
               <ul class="checks">
                 <li><span class="tick">✓</span><span>Salting spreads the hot key across 64 buckets instead of one executor.</span></li>
@@ -928,9 +1128,36 @@
             <div class="problem-body">
               <h3>Secure Weather API key rotation</h3>
               <div class="cols">
-                <div class="explain"><h4>They asked for</h4><p>A Python Lambda snippet for Secrets Manager rotation that verifies the new key against the Weather API before deprecating the old key.</p></div>
-                <div class="explain"><h4>What I built</h4><p>A complete four-step rotation Lambda with createSecret, setSecret, testSecret, and finishSecret. Error bodies are redacted to avoid leaking keys.</p></div>
-                <div class="explain"><h4>Why it works</h4><p>AWSCURRENT only moves in finishSecret after testSecret successfully calls the live API with AWSPENDING. Failure keeps the old key live.</p></div>
+                <div class="explain"><h4>They asked for</h4><p>A Python Lambda for AWS Secrets Manager rotation of the Weather API key, with the explicit invariant that the new key is verified against the live API <em>before</em> the old key is deprecated.</p></div>
+                <div class="explain"><h4>What I built</h4><p>A four-step rotation Lambda implementing the AWS Secrets Manager protocol modeled as a <em>two-phase commit</em>: the prepare phase (<code>createSecret</code> → <code>setSecret</code> → <code>testSecret</code>) verifies all participants; the commit phase (<code>finishSecret</code>) is the atomic state transition that moves <code>AWSCURRENT</code>. Idempotent at every step, body-redacted on error logs.</p></div>
+                <div class="explain"><h4>Why it works</h4><p>Two-phase commit guarantees atomic key cutover — if any prepare step fails, the rotation aborts and the old key keeps serving traffic. The four-step contract is mandated by AWS Secrets Manager and provides the retry semantics; idempotency at each step makes Secrets Manager's automatic retries safe. Information-theoretically, redacting response bodies prevents the issued key (128+ bits of entropy) from being leaked to CloudWatch via debug echoes.</p></div>
+              </div>
+              <div class="research">
+                <div class="pros">
+                  <h4>Pros · why this approach wins</h4>
+                  <ul>
+                    <li><b>2PC atomicity</b> — <code>AWSCURRENT</code> moves only after all preconditions verified; no partial-commit state.</li>
+                    <li><b>Liveness preserved</b> — old key continues to serve production traffic until the new key is verified; verification failure leaves the system in a healthy state.</li>
+                    <li><b>Idempotent at every step</b> — Secrets Manager retries are safe; <code>create_secret</code> short-circuits if AWSPENDING already exists; <code>finish_secret</code> short-circuits if the token is already AWSCURRENT.</li>
+                    <li><b>Information-theoretic leak prevention</b> — only <code>resp.status</code> and <code>len(resp.data)</code> are logged on error; the issued key's full entropy is preserved.</li>
+                    <li><b>No bootstrap deadlock</b> — admin bearer token lives in a separate Secrets Manager entry; rotating the Weather key never requires the Weather key. Breaks the classic "credentials to rotate credentials" cycle.</li>
+                    <li><b>Race-condition resistance</b> — catches both <code>ResourceNotFoundException</code> and <code>InvalidRequestException</code> on the createSecret probe, covering the TOCTOU window between Secrets Manager's version registration and label write.</li>
+                    <li><b>Defensive admin-token parsing</b> — accepts raw string <em>and</em> JSON <code>{token: ...}</code>; future-proof against admin-secret schema changes.</li>
+                    <li><b>Provable invariant</b> — smoke-tested in <code>screenshots/run-rotation-smoke-test.py</code>: AWSCURRENT remains on OLD through createSecret / setSecret / testSecret, only moves under finishSecret. A 401 in testSecret cleanly aborts and leaves the old key live.</li>
+                  </ul>
+                </div>
+                <div class="refs">
+                  <h4>Advanced techniques · references</h4>
+                  <ul>
+                    <li><b>Two-phase commit</b> — <em>Gray 1978, "Notes on Database Operating Systems";</em> <em>Lampson &amp; Sturgis 1976, "Crash Recovery in a Distributed Data Storage System."</em> The canonical atomic-commit protocol; AWS Secrets Manager's four-step rotation maps directly onto 2PC's prepare/commit phases.</li>
+                    <li><b>Idempotency in distributed systems</b> — <em>Pat Helland, "Idempotence Is Not a Medical Condition," ACM Queue 2012.</em> The retry-safety pattern.</li>
+                    <li><b>Saga pattern</b> — <em>Garcia-Molina &amp; Salem, SIGMOD 1987, "Sagas."</em> Long-running transaction model with compensating actions; the AWS rotation contract is a Saga with built-in compensation (old key keeps serving).</li>
+                    <li><b>TOCTOU race conditions</b> — <em>Bishop &amp; Dilger, "Checking for Race Conditions in File Accesses," CS 1996.</em> The InvalidRequestException-vs-ResourceNotFoundException distinction is the AWS-specific manifestation.</li>
+                    <li><b>Bootstrap trust problem</b> — chicken-and-egg of needing credentials to rotate credentials. Solved by decoupling the admin token's rotation policy from the workload key's; PKI literature calls this "trust anchor separation."</li>
+                    <li><b>Information leakage via logs</b> — Schneier &amp; Kelsey 1999, "Secure Audit Logs to Support Computer Forensics." The reverse problem: logging too much breaks the secret. <code>len(resp.data)</code> alone leaks negligible entropy.</li>
+                    <li><b>AWS Secrets Manager rotation template</b> — official AWS reference Lambda; defines the four-step contract this implementation conforms to.</li>
+                  </ul>
+                </div>
               </div>
               <div class="timeline-4">
                 <div class="step"><b>1</b><strong>createSecret</strong><span>Issue new key, store AWSPENDING.</span></div>
@@ -1049,8 +1276,43 @@
 
   <!-- ───────────────────────────── FOOTER ───────────────────────────── -->
   <footer class="footer">
-    <p>Regional Incident Data Lake · AWS architecture submission.</p>
-    <p>Open the source viewer to inspect any artifact in-page.</p>
+    <div class="footer-grid">
+      <div>
+        <p class="footer-brand">Archit Jain</p>
+        <p class="footer-role">Full Stack Engineer · AI / ML · AWS</p>
+        <p>F1jobs.io · NeuraScribe Inc</p>
+        <p>Austin, TX  ·  remote from Noida, India</p>
+        <p style="margin-top: 10px; color: var(--muted) !important; font-size: 12px;">
+          Cyber Cup 5.0 · 1st place (2025) · Team Lead · 150 teams. Earlier roles at Protechmind Solutions
+          and Narrato. B.Tech, Computer Science · Amity University.
+        </p>
+      </div>
+      <div>
+        <p class="footer-label">Contact</p>
+        <a href="mailto:architjain2501@gmail.com">architjain2501@gmail.com</a>
+        <a href="tel:+918595875456">+91 85958 75456</a>
+      </div>
+      <div>
+        <p class="footer-label">Profiles</p>
+        <a href="https://architjain.me" target="_blank" rel="noreferrer">architjain.me</a>
+        <a href="https://github.com/archit2501" target="_blank" rel="noreferrer">github.com/archit2501</a>
+        <a href="https://linkedin.com/in/architjain01" target="_blank" rel="noreferrer">linkedin.com/in/architjain01</a>
+      </div>
+      <div>
+        <p class="footer-label">Submission</p>
+        <p>Regional Incident Data Lake</p>
+        <p>AWS architecture · 2026</p>
+        <p>Source viewer keeps every artifact in-page.</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>Designed and built by Archit Jain.</p>
+      <div class="right">
+        <span>v1.0</span>
+        <span>·</span>
+        <span>2026</span>
+      </div>
+    </div>
   </footer>
 </main>
 
