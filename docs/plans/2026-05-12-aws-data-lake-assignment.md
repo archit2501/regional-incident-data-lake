@@ -1,6 +1,6 @@
 # Regional Incident Data Lake Assignment — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> Implementation plan for the Regional Incident Data Lake AWS architecture assignment. Tasks use checkbox (`- [ ]`) syntax for execution tracking. Tasks 1–9 are sequential; the operator console (Task 8.5) was added afterwards as the application-UX layer.
 
 **Goal:** Produce four assignment deliverables that solve data integrity, privilege isolation, scale, and secret-rotation problems for a serverless geospatial data lake on AWS.
 
@@ -21,7 +21,7 @@
 
 **Working directory:** `~/regional-incident-data-lake/`
 
-**Note on protocol scope:** CLAUDE.md's research-first protocol is targeted at codebases with CI. This assignment produces written artifacts only — no codebase to research, no CI to wire up, no smoke tests beyond JSON-validity + spec coverage. Tasks below adopt the **draft → rubric-check → finalize** loop instead of TDD, but keep frequent commits and explicit acceptance criteria.
+**Note on protocol scope:** the standard research-first / TDD protocol assumes a codebase with CI. This assignment produces written artifacts only — no codebase to research, no CI to wire up, no smoke tests beyond JSON-validity + spec coverage. Tasks below adopt a **draft → rubric-check → finalize** loop instead of TDD, but keep frequent commits and explicit acceptance criteria.
 
 ---
 
@@ -39,7 +39,7 @@ regional-incident-data-lake/
 │   ├── 03-data-skew-tech-note.md            # Problem 3 — 1-page note
 │   ├── 03-glue-job-skeleton.py              # Problem 3 — PySpark snippets cited in note
 │   └── 04-rotate-weather-api-key.py         # Problem 4 — Rotation Lambda
-└── docs/superpowers/plans/
+└── docs/plans/
     └── 2026-05-12-aws-data-lake-assignment.md  # this plan
 ```
 
@@ -1228,7 +1228,7 @@ Expected: a clean log of one commit per task plus the bundle commit.
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md`.
+Plan complete and saved to `docs/plans/2026-05-12-aws-data-lake-assignment.md`.
 
 Two execution options:
 

@@ -39,7 +39,7 @@ Start with **`index.html`**. It is the full website for the checker: one visual 
 `deliverables/00-reviewer-visual.html` remains as a compact backup dashboard, and `deliverables/05-operator-console.html` remains the standalone operator-console artifact. The homepage embeds the console so the checker does not need to leave the site.
 
 The plan that drove this submission lives at:
-- [`docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md`](docs/superpowers/plans/2026-05-12-aws-data-lake-assignment.md) — full markdown plan
+- [`docs/plans/2026-05-12-aws-data-lake-assignment.md`](docs/plans/2026-05-12-aws-data-lake-assignment.md) — full markdown plan
 - [`plan/plan.html`](plan/plan.html) — interactive HTML view with diagrams
 
 ## Account assumptions

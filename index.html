@@ -378,14 +378,19 @@
   .problem-body { padding: 18px 18px 18px 0; display: grid; gap: 14px; }
   .problem-body h3 { margin: 0; font-size: 21px; letter-spacing: -0.015em; }
   .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .cols > * { min-width: 0; }
   .explain {
     padding: 12px;
     border: 1px solid var(--line);
     background: color-mix(in srgb, var(--surface-strong) 60%, transparent);
     border-radius: 10px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .explain h4 { margin: 0 0 7px; font-size: 10.5px; letter-spacing: .07em; color: var(--muted); text-transform: uppercase; }
-  .explain p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; }
+  .explain p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+  .explain code { word-break: break-word; overflow-wrap: anywhere; }
   .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
   .checks li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; font-size: 13px; color: var(--ink-2); }
   .checks .tick { color: var(--accent-2); font-weight: 900; }
@@ -555,7 +560,11 @@
     color: var(--ink-2);
     padding-left: 16px;
     position: relative;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
+  .research code { word-break: break-word; }
+  .research > div { min-width: 0; }
   .research li::before {
     content: "";
     position: absolute;
